@@ -4,6 +4,15 @@ version = "0.1.0"
 authors = ["Alexey Karasev <karasev.alexey@gmail.com>"]
 edition = "2018"
 
+[[bin]]
+name = "proto_cli"
+path = "bin/main.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+async-std = "1.5"
+futures = "0.3"
+libp2p = "0.18"
+log = "0.4"
+env_logger = "0.7"
