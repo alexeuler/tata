@@ -2,8 +2,10 @@
 extern crate diesel_migrations;
 
 use async_std::{io, prelude::*};
-use futures::future::{select, Either};
+use command::Command;
+use diesel::sqlite::SqliteConnection;
 use std::error::Error;
+use tata_core::Core;
 // use libp2p::{
 //     floodsub::{self, Floodsub, FloodsubEvent},
 //     identity,
@@ -15,20 +17,18 @@ use std::error::Error;
 //     error::Error,
 //     task::{Context, Poll},
 // };
-use structopt::StructOpt;
 
 mod command;
 mod db;
+mod models;
+mod repos;
 
-fn handle_command(cmd: Result<String, io::Error>) {
-    let cmd = cmd.expect("Std io error");
-    let args = vec![""].into_iter().chain(cmd.split(" "));
-    match command::Command::from_iter_safe(args) {
-        Ok(cmd) => println!("{:?}", cmd),
-        Err(e) => {
-            if cmd != "" {
-                println!("{}", e);
-            }
+fn handle_command(cmd_res: Result<String, io::Error>, conn: &SqliteConnection) {
+    let cmd_str = cmd_res.expect("Std io error");
+    if cmd_str != "" {
+        let cmd: Command = cmd_str.parse().expect("Infallible; qed");
+        match cmd {
+            _ => println!("{}", Command::help()),
         }
     }
     prompt();
@@ -39,7 +39,7 @@ fn prompt() {
     let _ = <std::io::Stdout as std::io::Write>::flush(&mut std::io::stdout());
 }
 
-fn handle_event(event: core::Event) {}
+fn handle_event(event: tata_core::Event) {}
 
 #[async_std::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -47,8 +47,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let conn = db::establish_connection();
     db::run_migrations(&conn);
 
-    let core = core::Core::new();
-    let stdin = io::BufReader::new(io::stdin()).lines().map(handle_command);
+    let core = Core::new();
+    let stdin = io::BufReader::new(io::stdin())
+        .lines()
+        .map(|cmd| handle_command(cmd, &conn));
     let events = core.events.map(handle_event);
     let mut stream = futures::stream::select(stdin, events);
     prompt();

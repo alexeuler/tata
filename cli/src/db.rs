@@ -10,5 +10,6 @@ pub fn establish_connection() -> SqliteConnection {
 }
 
 pub fn run_migrations(conn: &SqliteConnection) {
-	embedded_migrations::run_with_output(conn, &mut std::io::stdout()).expect("Failed to run migrations");
+    embedded_migrations::run_with_output(conn, &mut std::io::stdout())
+        .expect("Failed to run migrations");
 }
