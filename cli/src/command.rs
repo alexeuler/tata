@@ -29,7 +29,7 @@ impl Command {
     pub fn help() -> String {
         r#"
 COMMANDS:
-    list_user           list all users
+    list_users          list all users
     create_user         create new user
     switch_user         switch a user
     help                display help

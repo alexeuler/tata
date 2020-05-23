@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate diesel_migrations;
+#[macro_use]
+extern crate diesel;
 
 use async_std::{io, prelude::*};
 use command::Command;
@@ -22,12 +24,20 @@ mod command;
 mod db;
 mod models;
 mod repos;
+mod schema;
 
 fn handle_command(cmd_res: Result<String, io::Error>, conn: &SqliteConnection) {
     let cmd_str = cmd_res.expect("Std io error");
     if cmd_str != "" {
         let cmd: Command = cmd_str.parse().expect("Infallible; qed");
         match cmd {
+            Command::ListUsers => {
+                let users_res = repos::UsersRepo::list(conn);
+                match users_res {
+                    Ok(users) => println!("{:?}", users),
+                    Err(e) => println!("{}", e),
+                }
+            }
             _ => println!("{}", Command::help()),
         }
     }

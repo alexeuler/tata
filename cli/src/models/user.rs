@@ -1,6 +1,6 @@
 use diesel::Queryable;
 
-#[derive(Queryable)]
+#[derive(Debug, Queryable)]
 pub struct User {
     id: i32,
     first_name: String,

@@ -1,10 +1,11 @@
 use super::super::models::*;
+use crate::schema::users::dsl::*;
 use diesel::prelude::*;
 
 pub struct UsersRepo;
 
 impl UsersRepo {
-    fn list(conn: &SqliteConnection) -> Vec<User> {
-        todo!()
+    pub fn list(conn: &SqliteConnection) -> QueryResult<Vec<User>> {
+        users.load::<User>(conn)
     }
 }
