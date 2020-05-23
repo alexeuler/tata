@@ -1,10 +1,18 @@
-#[macro_use]
-extern crate diesel_migrations;
+mod event;
 
-mod db;
+pub use event::Event;
+use futures::stream::{empty, Stream};
 
-pub fn start() {
-	let conn = db::establish_connection();
-	db::run_migrations(&conn);
+/// Main struct that drives network behavior
+pub struct Core {
+    pub events: Box<dyn Stream<Item = Event> + Unpin>,
 }
 
+impl Core {
+    /// Create new core
+    pub fn new() -> Self {
+        Core {
+            events: Box::new(empty()),
+        }
+    }
+}

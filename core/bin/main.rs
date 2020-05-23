@@ -1,22 +1,104 @@
+#[macro_use]
+extern crate diesel_migrations;
 
-use async_std::{io, task};
-use futures::{future, prelude::*};
-use libp2p::{
-    Multiaddr,
-    PeerId,
-    Swarm,
-    NetworkBehaviour,
-    identity,
-    floodsub::{self, Floodsub, FloodsubEvent},
-    mdns::{Mdns, MdnsEvent},
-    swarm::NetworkBehaviourEventProcess
-};
-use std::{error::Error, task::{Context, Poll}};
+use async_std::{io, prelude::*};
+use futures::future::{select, Either};
+use std::error::Error;
+// use libp2p::{
+//     floodsub::{self, Floodsub, FloodsubEvent},
+//     identity,
+//     mdns::{Mdns, MdnsEvent},
+//     swarm::NetworkBehaviourEventProcess,
+//     Multiaddr, NetworkBehaviour, PeerId, Swarm,
+// };
+// use std::{
+//     error::Error,
+//     task::{Context, Poll},
+// };
+use structopt::StructOpt;
 
-fn main() -> Result<(), Box<dyn Error>> {
+mod command;
+mod db;
+
+fn handle_command(cmd: Result<String, io::Error>) {
+    let cmd = cmd.expect("Std io error");
+    let args = vec![""].into_iter().chain(cmd.split(" "));
+    match command::Command::from_iter_safe(args) {
+        Ok(cmd) => println!("{:?}", cmd),
+        Err(e) => {
+            if cmd != "" {
+                println!("{}", e);
+            }
+        }
+    }
+    prompt();
+}
+
+fn prompt() {
+    print!("> ");
+    let _ = <std::io::Stdout as std::io::Write>::flush(&mut std::io::stdout());
+}
+
+fn handle_event(event: core::Event) {}
+
+#[async_std::main]
+async fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
-    core::start();
-    Ok(())
+    let conn = db::establish_connection();
+    db::run_migrations(&conn);
+
+    let core = core::Core::new();
+    let stdin = io::BufReader::new(io::stdin()).lines().map(handle_command);
+    let events = core.events.map(handle_event);
+    let mut stream = futures::stream::select(stdin, events);
+    prompt();
+    loop {
+        let _ = stream.next().await;
+    }
+    // let mut line = String::new();
+    // let line_ref = &mut line;
+    // loop {
+    //     let line_future = Box::pin(stdin.read_line(line_ref));
+    //     match select(line_future, core).await {
+    //         Either::Left(_) => {
+    //             let args = vec![""].into_iter().chain(line_ref.split(" "));
+    //             match command::Command::from_iter_safe(args) {
+    //                 Ok(cmd) => println!("{:?}", cmd),
+    //                 Err(e) => {
+    //                     if line != "" {
+    //                         println!("{}", e);
+    //                     }
+    //                 }
+    //             }
+    //             stdout.write(b">").await?;
+    //             stdout.flush().await?;
+    //         }
+    //         Either::Right((_, _event)) => (),
+    //     }
+    // }
+
+    // let opt = command::Command::from_args();
+    // Ok(())
+    // task::block_on(future::poll_fn(move |cx: &mut Context| {
+    //     loop {
+    //         match stdin.try_poll_next_unpin(cx)? {
+    //             Poll::Ready(Some(ref line)) => {
+    //                 let args = vec![""].into_iter().chain(line.split(" "));
+    //                 match command::Command::from_iter_safe(args) {
+    //                     Ok(cmd) => println!("{:?}", cmd),
+    //                     Err(e) => {
+    //                         if line != "" {
+    //                             println!("{}", e);
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //             Poll::Ready(None) => panic!("Stdin closed"),
+    //             Poll::Pending => break,
+    //         }
+    //     }
+    //     Poll::Pending
+    // }))
 
     // // Create a random PeerId
     // let local_key = identity::Keypair::generate_ed25519();
@@ -125,5 +207,3 @@ fn main() -> Result<(), Box<dyn Error>> {
     //     Poll::Pending
     // }))
 }
-
-

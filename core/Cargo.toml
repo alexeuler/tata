@@ -12,10 +12,11 @@ path = "bin/main.rs"
 name = "core"
 
 [dependencies]
-async-std = "1.5"
+async-std = { version = "1.5", features = ["attributes"] }
 futures = "0.3"
 libp2p = "0.18"
 log = "0.4"
 env_logger = "0.7"
 diesel = { version = "1.4", features = ["sqlite"] }
 diesel_migrations = { version = "1.4", features = ["sqlite"] }
+structopt = "0.3"
