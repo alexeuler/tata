@@ -38,6 +38,7 @@ fn handle_command(cmd_res: Result<String, io::Error>, conn: &SqliteConnection) {
                     Err(e) => println!("{}", e),
                 }
             }
+            Command::CreateUser => {}
             _ => println!("{}", Command::help()),
         }
     }
