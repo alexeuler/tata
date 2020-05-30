@@ -3,7 +3,10 @@ extern crate diesel_migrations;
 #[macro_use]
 extern crate diesel;
 
-use async_std::{io, prelude::*};
+use async_std::{
+    io::{self, prelude::*},
+    prelude::*,
+};
 use command::Command;
 use diesel::sqlite::SqliteConnection;
 use std::error::Error;
@@ -26,27 +29,53 @@ mod models;
 mod repos;
 mod schema;
 
-fn handle_command(cmd_res: Result<String, io::Error>, conn: &SqliteConnection) {
-    let cmd_str = cmd_res.expect("Std io error");
+async fn handle_command(
+    cmd_str: &str,
+    conn: &SqliteConnection,
+    stdin: &async_std::io::Stdin,
+) -> Result<(), io::Error> {
     if cmd_str != "" {
+        let users_repo = repos::UsersRepo::new(&conn);
         let cmd: Command = cmd_str.parse().expect("Infallible; qed");
         match cmd {
             Command::ListUsers => {
-                let users_res = repos::UsersRepo::list(conn);
+                let users_res = users_repo.list();
                 match users_res {
                     Ok(users) => println!("{:?}", users),
                     Err(e) => println!("{}", e),
                 }
             }
-            Command::CreateUser => {}
+            Command::CreateUser => {
+                println!("First name: ");
+                let mut line = String::new();
+                stdin.read_line(&mut line).await?;
+                if line == "" {
+                    println!("First name should not be empty")
+                } else {
+                    let first_name = line.clone();
+                    stdin.read_line(&mut line).await?;
+                    let last_name = if (line == "") {
+                        None
+                    } else {
+                        Some(line.clone())
+                    };
+                }
+
+                stdin.read_line(&mut line).await?;
+            }
             _ => println!("{}", Command::help()),
         }
     }
     prompt();
+    Ok(())
 }
 
 fn prompt() {
     print!("> ");
+    flush();
+}
+
+fn flush() {
     let _ = <std::io::Stdout as std::io::Write>::flush(&mut std::io::stdout());
 }
 
@@ -57,16 +86,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
     let conn = db::establish_connection();
     db::run_migrations(&conn);
-
-    let core = Core::new();
-    let stdin = io::BufReader::new(io::stdin())
-        .lines()
-        .map(|cmd| handle_command(cmd, &conn));
-    let events = core.events.map(handle_event);
-    let mut stream = futures::stream::select(stdin, events);
+    async_std::task::spawn(async {
+        let core = Core::new();
+        let mut events = core.events.map(handle_event);
+        loop {
+            let _ = events.next().await;
+        }
+    });
+    let stdin = io::stdin();
     prompt();
+    let mut buf = String::new();
     loop {
-        let _ = stream.next().await;
+        let _ = stdin.read_line(&mut buf).await?;
+        handle_command(&buf, &conn, &stdin).await?;
     }
     // let mut line = String::new();
     // let line_ref = &mut line;

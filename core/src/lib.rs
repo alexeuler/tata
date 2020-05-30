@@ -1,11 +1,13 @@
 mod event;
+mod ffi;
+mod utils;
 
-pub use event::Event;
+use event::Event;
 use futures::stream::{empty, Stream};
 
 /// Main struct that drives network behavior
-pub struct Core {
-    pub events: Box<dyn Stream<Item = Event> + Unpin>,
+struct Core {
+    pub events: Box<dyn Stream<Item = Event> + Send + Unpin>,
 }
 
 impl Core {
@@ -16,3 +18,5 @@ impl Core {
         }
     }
 }
+
+pub fn start(event_callback: fn(Event) -> ()) {}
