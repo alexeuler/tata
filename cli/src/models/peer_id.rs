@@ -11,6 +11,12 @@ use std::io::prelude::*;
 #[sql_type = "Text"]
 pub struct PeerId(String);
 
+impl Default for PeerId {
+    fn default() -> Self {
+        PeerId("".to_string())
+    }
+}
+
 impl ToSql<Text, Sqlite> for PeerId {
     fn to_sql<W: Write>(&self, out: &mut Output<W, Sqlite>) -> serialize::Result {
         ToSql::<Text, Sqlite>::to_sql(&self.0, out)

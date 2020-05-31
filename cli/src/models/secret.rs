@@ -9,6 +9,12 @@ use std::io::prelude::*;
 #[sql_type = "Binary"]
 pub struct Secret(Vec<u8>);
 
+impl Default for Secret {
+    fn default() -> Self {
+        Secret(vec![])
+    }
+}
+
 impl std::fmt::Debug for Secret {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.write_str("0x")?;

@@ -37,11 +37,19 @@ async fn handle_command(
     cmd_str: &str,
     conn: &SqliteConnection,
     stdin: &async_std::io::Stdin,
+    current_user: &mut User,
 ) -> Result<()> {
     if cmd_str != "" {
         let users_repo = repos::UsersRepo::new(&conn);
         let cmd: Command = cmd_str.parse().expect("Infallible; qed");
         match cmd {
+            Command::CurrentUser => println!("{:#?}", current_user),
+            Command::SwitchUser => {
+                let id = collect_id(stdin).await?;
+                if let Some(user) = users_repo.find(id)? {
+                    *current_user = user
+                }
+            }
             Command::ListUsers => {
                 let users = users_repo.list()?;
                 println!("{:#?}", users);
@@ -122,6 +130,19 @@ async fn main() -> Result<()> {
     env_logger::init();
     let conn = db::establish_connection();
     db::run_migrations(&conn);
+    let stdin = io::stdin();
+    prompt();
+    let mut buf = String::new();
+
+    let users_repo = repos::UsersRepo::new(&conn);
+    let mut users = users_repo.list()?;
+    let mut current_user = Default::default();
+    if users.len() == 0 {
+        handle_command("create_user", &conn, &stdin, &mut current_user).await?;
+        users = users_repo.list()?;
+        prompt();
+    };
+    current_user = users.first().cloned().expect("User exists; qed");
     // async_std::task::spawn(async {
     //     let core = Core::new();
     //     let mut events = core.events.map(handle_event);
@@ -129,12 +150,9 @@ async fn main() -> Result<()> {
     //         let _ = events.next().await;
     //     }
     // });
-    let stdin = io::stdin();
-    prompt();
-    let mut buf = String::new();
     loop {
         let _ = stdin.read_line(&mut buf).await?;
-        match handle_command(&buf, &conn, &stdin).await {
+        match handle_command(&buf, &conn, &stdin, &mut current_user).await {
             Ok(_) => (),
             Err(e) => println!("{}", e),
         };

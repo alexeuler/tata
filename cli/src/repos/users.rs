@@ -15,6 +15,10 @@ impl<'a> UsersRepo<'a> {
         users.order(id.desc()).load::<User>(self.conn)
     }
 
+    pub fn find(&self, user_id: i32) -> QueryResult<Option<User>> {
+        users.find(user_id).first(self.conn).optional()
+    }
+
     pub fn create(&self, user: &NewUser) -> QueryResult<()> {
         diesel::insert_into(users::table)
             .values(user)

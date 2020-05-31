@@ -4,7 +4,7 @@ use crate::ffi::generate_pair;
 use crate::schema::users;
 use diesel::Queryable;
 
-#[derive(Debug, Queryable)]
+#[derive(Debug, Queryable, Clone, Default)]
 pub struct User {
     id: i32,
     first_name: String,

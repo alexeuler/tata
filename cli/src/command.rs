@@ -10,6 +10,8 @@ pub enum Command {
     DeleteUser,
     /// Switch user,
     SwitchUser,
+    /// Display current user
+    CurrentUser,
     /// Help
     Help,
 }
@@ -25,6 +27,7 @@ impl std::str::FromStr for Command {
                 "update_user" => Command::UpdateUser,
                 "delete_user" => Command::DeleteUser,
                 "switch_user" => Command::SwitchUser,
+                "current_user" => Command::CurrentUser,
                 _ => Command::Help,
             }
         } else {
@@ -43,6 +46,7 @@ COMMANDS:
     update_user         update a user
     delete_user         delete a user
     switch_user         switch a user
+    current_user        display current user
     help                display help
         "#
         .to_string()
