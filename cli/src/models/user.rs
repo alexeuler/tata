@@ -1,3 +1,6 @@
+use super::peer_id::PeerId;
+use super::secret::Secret;
+use crate::ffi::generate_pair;
 use crate::schema::users;
 use diesel::Queryable;
 
@@ -6,8 +9,8 @@ pub struct User {
     id: i32,
     first_name: String,
     last_name: Option<String>,
-    peer_id: Vec<u8>,
-    private_key: Vec<u8>,
+    peer_id: PeerId,
+    secret: Secret,
 }
 
 #[derive(Insertable)]
@@ -15,8 +18,8 @@ pub struct User {
 pub struct NewUser {
     first_name: String,
     last_name: Option<String>,
-    peer_id: Vec<u8>,
-    private_key: Vec<u8>,
+    peer_id: PeerId,
+    secret: Secret,
 }
 
 #[derive(AsChangeset)]
@@ -24,4 +27,16 @@ pub struct NewUser {
 pub struct UpdateUser {
     first_name: Option<String>,
     last_name: Option<String>,
+}
+
+impl NewUser {
+    pub fn new(first_name: String, last_name: Option<String>) -> Self {
+        let (secret, peer_id) = generate_pair();
+        NewUser {
+            first_name,
+            last_name,
+            peer_id,
+            secret,
+        }
+    }
 }

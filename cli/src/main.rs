@@ -9,8 +9,9 @@ use async_std::{
 };
 use command::Command;
 use diesel::sqlite::SqliteConnection;
+use models::*;
 use std::error::Error;
-use tata_core::Core;
+// use tata_core::Core;
 // use libp2p::{
 //     floodsub::{self, Floodsub, FloodsubEvent},
 //     identity,
@@ -25,6 +26,8 @@ use tata_core::Core;
 
 mod command;
 mod db;
+mod error;
+mod ffi;
 mod models;
 mod repos;
 mod schema;
@@ -48,20 +51,21 @@ async fn handle_command(
             Command::CreateUser => {
                 println!("First name: ");
                 let mut line = String::new();
-                stdin.read_line(&mut line).await?;
-                if line == "" {
-                    println!("First name should not be empty")
-                } else {
-                    let first_name = line.clone();
+                while line == "" {
                     stdin.read_line(&mut line).await?;
-                    let last_name = if (line == "") {
-                        None
-                    } else {
-                        Some(line.clone())
-                    };
+                    if line == "" {
+                        println!("First name should not be empty")
+                    }
                 }
-
+                let first_name = line.clone();
+                println!("Last name: ");
                 stdin.read_line(&mut line).await?;
+                let last_name = if line == "" { None } else { Some(line) };
+                let new_user = NewUser::new(first_name, last_name);
+                match users_repo.create(&new_user) {
+                    Ok(()) => (),
+                    Err(e) => println!("{}", e),
+                };
             }
             _ => println!("{}", Command::help()),
         }
@@ -79,20 +83,20 @@ fn flush() {
     let _ = <std::io::Stdout as std::io::Write>::flush(&mut std::io::stdout());
 }
 
-fn handle_event(event: tata_core::Event) {}
+// fn handle_event(event: tata_core::Event) {}
 
 #[async_std::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
     let conn = db::establish_connection();
     db::run_migrations(&conn);
-    async_std::task::spawn(async {
-        let core = Core::new();
-        let mut events = core.events.map(handle_event);
-        loop {
-            let _ = events.next().await;
-        }
-    });
+    // async_std::task::spawn(async {
+    //     let core = Core::new();
+    //     let mut events = core.events.map(handle_event);
+    //     loop {
+    //         let _ = events.next().await;
+    //     }
+    // });
     let stdin = io::stdin();
     prompt();
     let mut buf = String::new();

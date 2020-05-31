@@ -1,5 +1,5 @@
 mod event;
-mod ffi;
+pub mod ffi;
 mod utils;
 
 use event::Event;

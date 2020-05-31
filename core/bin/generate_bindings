@@ -1,0 +1,1 @@
+bindgen headers/tata_core.h -o bindings.rs
