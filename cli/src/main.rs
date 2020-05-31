@@ -9,8 +9,9 @@ use async_std::{
 };
 use command::Command;
 use diesel::sqlite::SqliteConnection;
+use error::Result;
 use models::*;
-use std::error::Error;
+// use std::error::Error;
 // use tata_core::Core;
 // use libp2p::{
 //     floodsub::{self, Floodsub, FloodsubEvent},
@@ -36,48 +37,73 @@ async fn handle_command(
     cmd_str: &str,
     conn: &SqliteConnection,
     stdin: &async_std::io::Stdin,
-) -> Result<(), io::Error> {
+) -> Result<()> {
     if cmd_str != "" {
         let users_repo = repos::UsersRepo::new(&conn);
         let cmd: Command = cmd_str.parse().expect("Infallible; qed");
         match cmd {
             Command::ListUsers => {
-                let users_res = users_repo.list();
-                match users_res {
-                    Ok(users) => println!("{:?}", users),
-                    Err(e) => println!("{}", e),
-                }
+                let users = users_repo.list()?;
+                println!("{:#?}", users);
             }
             Command::CreateUser => {
-                println!("First name: ");
-                let mut first_name = String::new();
-                while first_name == "" {
-                    stdin.read_line(&mut first_name).await?;
-                    first_name = first_name.trim().to_string();
-                    if first_name == "" {
-                        println!("First name should not be empty")
-                    }
-                }
-                println!("Last name: ");
-                let mut last_name = String::new();
-                last_name = last_name.trim().to_string();
-                stdin.read_line(&mut last_name).await?;
-                let last_name = if last_name == "" {
-                    None
-                } else {
-                    Some(last_name.trim().to_string())
-                };
+                let (first_name, last_name) = collect_first_and_last_name(stdin).await?;
                 let new_user = NewUser::new(first_name, last_name);
-                match users_repo.create(&new_user) {
-                    Ok(()) => (),
-                    Err(e) => println!("{}", e),
-                };
+                users_repo.create(&new_user)?;
             }
+            Command::UpdateUser => {
+                let id = collect_id(stdin).await?;
+                let (first_name, last_name) = collect_first_and_last_name(stdin).await?;
+                let update_user = UpdateUser {
+                    first_name: Some(first_name),
+                    last_name,
+                };
+                users_repo.update(id, &update_user)?;
+            }
+            Command::DeleteUser => {
+                let id = collect_id(stdin).await?;
+                users_repo.delete(id)?;
+            }
+
             _ => println!("{}", Command::help()),
         }
     }
-    prompt();
     Ok(())
+}
+
+async fn read_string(stdin: &async_std::io::Stdin) -> Result<String> {
+    let mut buf = String::new();
+    stdin.read_line(&mut buf).await?;
+    let res = buf.trim().to_string();
+    Ok(res)
+}
+
+async fn collect_id(stdin: &async_std::io::Stdin) -> Result<i32> {
+    println!("Id: ");
+    let id_str = read_string(stdin).await?;
+    let id = id_str.parse()?;
+    Ok(id)
+}
+
+async fn collect_first_and_last_name(
+    stdin: &async_std::io::Stdin,
+) -> Result<(String, Option<String>)> {
+    println!("First name: ");
+    let mut first_name = String::new();
+    while first_name == "" {
+        first_name = read_string(stdin).await?;
+        if first_name == "" {
+            println!("First name should not be empty")
+        }
+    }
+    println!("Last name: ");
+    let last_name = read_string(stdin).await?;
+    let last_name = if last_name == "" {
+        None
+    } else {
+        Some(last_name.trim().to_string())
+    };
+    Ok((first_name, last_name))
 }
 
 fn prompt() {
@@ -92,7 +118,7 @@ fn flush() {
 // fn handle_event(event: tata_core::Event) {}
 
 #[async_std::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> Result<()> {
     env_logger::init();
     let conn = db::establish_connection();
     db::run_migrations(&conn);
@@ -108,7 +134,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut buf = String::new();
     loop {
         let _ = stdin.read_line(&mut buf).await?;
-        handle_command(&buf, &conn, &stdin).await?;
+        match handle_command(&buf, &conn, &stdin).await {
+            Ok(_) => (),
+            Err(e) => println!("{}", e),
+        };
+        prompt();
         buf = String::new();
     }
     // let mut line = String::new();

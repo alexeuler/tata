@@ -5,9 +5,19 @@ use diesel::sql_types::Binary;
 use diesel::sqlite::Sqlite;
 use std::io::prelude::*;
 
-#[derive(Debug, PartialEq, Eq, FromSqlRow, AsExpression, Clone)]
+#[derive(PartialEq, Eq, FromSqlRow, AsExpression, Clone)]
 #[sql_type = "Binary"]
 pub struct Secret(Vec<u8>);
+
+impl std::fmt::Debug for Secret {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_str("0x")?;
+        for byte in self.0.iter() {
+            f.write_fmt(format_args!("{:x?}", byte))?;
+        }
+        Ok(())
+    }
+}
 
 impl std::fmt::Display for Secret {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

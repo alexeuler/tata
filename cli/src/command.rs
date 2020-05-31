@@ -4,6 +4,10 @@ pub enum Command {
     ListUsers,
     /// Create user
     CreateUser,
+    /// Update user
+    UpdateUser,
+    /// Delete user
+    DeleteUser,
     /// Switch user,
     SwitchUser,
     /// Help
@@ -18,6 +22,8 @@ impl std::str::FromStr for Command {
             match line1 {
                 "list_users" => Command::ListUsers,
                 "create_user" => Command::CreateUser,
+                "update_user" => Command::UpdateUser,
+                "delete_user" => Command::DeleteUser,
                 "switch_user" => Command::SwitchUser,
                 _ => Command::Help,
             }
@@ -34,6 +40,8 @@ impl Command {
 COMMANDS:
     list_users          list all users
     create_user         create new user
+    update_user         update a user
+    delete_user         delete a user
     switch_user         switch a user
     help                display help
         "#

@@ -25,8 +25,8 @@ pub struct NewUser {
 #[derive(AsChangeset)]
 #[table_name = "users"]
 pub struct UpdateUser {
-    first_name: Option<String>,
-    last_name: Option<String>,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
 }
 
 impl NewUser {

@@ -12,11 +12,11 @@ impl<'a> UsersRepo<'a> {
     }
 
     pub fn list(&self) -> QueryResult<Vec<User>> {
-        users.load::<User>(self.conn)
+        users.order(id.desc()).load::<User>(self.conn)
     }
 
     pub fn create(&self, user: &NewUser) -> QueryResult<()> {
-        let user = diesel::insert_into(users::table)
+        diesel::insert_into(users::table)
             .values(user)
             .execute(self.conn)?;
         Ok(())
