@@ -14,12 +14,15 @@ impl std::str::FromStr for Command {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut lines = s.split_whitespace();
-        let line1 = lines.next().expect("Infallible; qed");
-        let res = match line1 {
-            "list_users" => Command::ListUsers,
-            "create_user" => Command::CreateUser,
-            "switch_user" => Command::SwitchUser,
-            _ => Command::Help,
+        let res = if let Some(line1) = lines.next() {
+            match line1 {
+                "list_users" => Command::ListUsers,
+                "create_user" => Command::CreateUser,
+                "switch_user" => Command::SwitchUser,
+                _ => Command::Help,
+            }
+        } else {
+            Command::Help
         };
         Ok(res)
     }

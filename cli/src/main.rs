@@ -50,17 +50,23 @@ async fn handle_command(
             }
             Command::CreateUser => {
                 println!("First name: ");
-                let mut line = String::new();
-                while line == "" {
-                    stdin.read_line(&mut line).await?;
-                    if line == "" {
+                let mut first_name = String::new();
+                while first_name == "" {
+                    stdin.read_line(&mut first_name).await?;
+                    first_name = first_name.trim().to_string();
+                    if first_name == "" {
                         println!("First name should not be empty")
                     }
                 }
-                let first_name = line.clone();
                 println!("Last name: ");
-                stdin.read_line(&mut line).await?;
-                let last_name = if line == "" { None } else { Some(line) };
+                let mut last_name = String::new();
+                last_name = last_name.trim().to_string();
+                stdin.read_line(&mut last_name).await?;
+                let last_name = if last_name == "" {
+                    None
+                } else {
+                    Some(last_name.trim().to_string())
+                };
                 let new_user = NewUser::new(first_name, last_name);
                 match users_repo.create(&new_user) {
                     Ok(()) => (),
@@ -103,6 +109,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     loop {
         let _ = stdin.read_line(&mut buf).await?;
         handle_command(&buf, &conn, &stdin).await?;
+        buf = String::new();
     }
     // let mut line = String::new();
     // let line_ref = &mut line;

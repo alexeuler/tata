@@ -3,7 +3,6 @@ name = "tata-cli"
 version = "0.1.0"
 authors = ["Alexey Karasev <karasev.alexey@gmail.com>"]
 edition = "2018"
-links = "tata_core"
 
 [dependencies]
 env_logger = "0.7"

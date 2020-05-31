@@ -9,5 +9,10 @@ pub fn generate_pair() -> (Secret, PeerId) {
 
 fn generate_pair_bytes() -> (Vec<u8>, Vec<u8>) {
     let tata_core::CPair { secret, peer_id } = unsafe { tata_core::generate_pair() };
-    (secret.into(), peer_id.into())
+    let res = (secret.clone().into(), peer_id.clone().into());
+    unsafe {
+        tata_core::free_array(secret);
+        tata_core::free_array(peer_id);
+    }
+    res
 }

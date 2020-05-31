@@ -1,4 +1,5 @@
 #[repr(C)]
+#[derive(Debug, Clone)]
 pub struct ByteArray {
     data: *mut u8,
     len: usize,
