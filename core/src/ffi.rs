@@ -1,4 +1,28 @@
+use crate::event::{Event, PlainEvent};
+use serde::Serialize;
 use std::mem::ManuallyDrop;
+
+/// Ffi representation of event
+#[repr(C)]
+pub struct CEvent {
+    /// Union tag
+    tag: PlainEvent,
+    /// Binary serialized json data
+    data: ByteArray,
+}
+
+impl From<Event> for CEvent {
+    fn from(ev: Event) -> CEvent {
+        match ev {
+            Event::PlainTextMessage(data) => CEvent {
+                tag: PlainEvent::PlainTextMessage,
+                data: serde_json::to_vec(&data)
+                    .expect("infallible conversion; qed")
+                    .into(),
+            },
+        }
+    }
+}
 
 #[repr(C)]
 pub struct ByteArray {
