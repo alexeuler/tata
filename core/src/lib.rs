@@ -1,22 +1,46 @@
+mod error;
 mod event;
-pub mod ffi;
+mod ffi;
+mod network;
 mod utils;
 
+use error::{Error, Result};
 use event::Event;
-use futures::stream::{empty, Stream};
+use futures::stream::{empty, Stream, StreamExt};
+use libp2p::identity::secp256k1::{Keypair, SecretKey};
+use libp2p::{
+    mdns::{Mdns, MdnsEvent},
+    PeerId, Swarm,
+};
+use network::CoreNetworkBehaviour;
 
-/// Main struct that drives network behavior
-struct Core {
-    pub events: Box<dyn Stream<Item = Event> + Send + Unpin>,
+const CHANNEL_BUFFER_SIZE: usize = 10;
+
+/// Starts networking
+pub fn start(secret: SecretKey, callback: impl Fn(Event) + Send + Sync + 'static) -> Result<()> {
+    let keypair: Keypair = secret.into();
+    let libp2p_keypair = libp2p::identity::Keypair::Secp256k1(keypair);
+    let public_key = libp2p_keypair.public().clone();
+    let peer_id = PeerId::from_public_key(public_key);
+    let mdns = Mdns::new()?;
+    let transport = libp2p::build_development_transport(libp2p_keypair)?;
+    let (tx, rx) = futures::channel::mpsc::channel(CHANNEL_BUFFER_SIZE);
+    let events = rx.for_each(move |ev| {
+        callback(ev);
+        futures::future::ready(())
+    });
+    let mut behaviour = CoreNetworkBehaviour {
+        mdns,
+        event_sink: tx,
+    };
+
+    let mut swarm = Swarm::new(transport, behaviour, peer_id);
+    Swarm::listen_on(&mut swarm, "/ip4/0.0.0.0/tcp/0".parse()?)?;
+    let swarm = swarm.for_each(|ev| {
+        // callback(ev);
+        futures::future::ready(())
+    });
+    async_std::task::spawn(swarm);
+    async_std::task::spawn(events);
+    Ok(())
 }
-
-impl Core {
-    /// Create new core
-    pub fn new() -> Self {
-        Core {
-            events: Box::new(empty()),
-        }
-    }
-}
-
-pub fn start(event_callback: fn(Event) -> ()) {}

@@ -20,6 +20,18 @@ impl From<Event> for CEvent {
                     .expect("infallible conversion; qed")
                     .into(),
             },
+            Event::PeerDiscovered(data) => CEvent {
+                tag: PlainEvent::PeerDiscovered,
+                data: serde_json::to_vec(&data)
+                    .expect("infallible conversion; qed")
+                    .into(),
+            },
+            Event::PeerGone(data) => CEvent {
+                tag: PlainEvent::PeerGone,
+                data: serde_json::to_vec(&data)
+                    .expect("infallible conversion; qed")
+                    .into(),
+            },
         }
     }
 }
@@ -40,10 +52,33 @@ impl From<Vec<u8>> for ByteArray {
     }
 }
 
+impl Into<Vec<u8>> for ByteArray {
+    fn into(self) -> Vec<u8> {
+        unsafe { std::slice::from_raw_parts(self.data, self.len).to_vec() }
+    }
+}
+
 #[repr(C)]
 pub struct CPair {
     pub secret: ByteArray,
     pub peer_id: ByteArray,
+}
+
+#[no_mangle]
+pub extern "C" fn start_network(secret_array: ByteArray, callback: fn(CEvent)) -> bool {
+    let secret_bytes: Vec<u8> = secret_array.into();
+    let secret = match libp2p::identity::secp256k1::SecretKey::from_bytes(secret_bytes) {
+        Ok(s) => s,
+        Err(e) => {
+            println!("Error: {}", e);
+            return false;
+        }
+    };
+    if let Err(e) = crate::start(secret, move |ev| callback(ev.into())) {
+        println!("Error: {}", e);
+        return false;
+    }
+    true
 }
 
 #[no_mangle]
