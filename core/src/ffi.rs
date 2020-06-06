@@ -54,7 +54,11 @@ impl From<Vec<u8>> for ByteArray {
 
 impl Into<Vec<u8>> for ByteArray {
     fn into(self) -> Vec<u8> {
-        unsafe { std::slice::from_raw_parts(self.data, self.len).to_vec() }
+        unsafe {
+            let res = std::slice::from_raw_parts(self.data, self.len).to_vec();
+            free_array(self);
+            res
+        }
     }
 }
 

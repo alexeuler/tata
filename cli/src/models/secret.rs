@@ -9,6 +9,12 @@ use std::io::prelude::*;
 #[sql_type = "Binary"]
 pub struct Secret(Vec<u8>);
 
+impl Into<Vec<u8>> for Secret {
+    fn into(self) -> Vec<u8> {
+        self.0
+    }
+}
+
 impl Default for Secret {
     fn default() -> Self {
         Secret(vec![])

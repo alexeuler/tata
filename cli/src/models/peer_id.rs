@@ -5,9 +5,10 @@ use diesel::deserialize::{self, FromSql};
 use diesel::serialize::{self, Output, ToSql};
 use diesel::sql_types::Text;
 use diesel::sqlite::Sqlite;
+use serde::Deserialize;
 use std::io::prelude::*;
 
-#[derive(Debug, Display, PartialEq, Eq, FromSqlRow, AsExpression, Clone)]
+#[derive(Debug, Display, PartialEq, Eq, FromSqlRow, AsExpression, Clone, Deserialize)]
 #[sql_type = "Text"]
 pub struct PeerId(String);
 

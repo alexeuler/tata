@@ -143,6 +143,7 @@ async fn main() -> Result<()> {
         prompt();
     };
     current_user = users.first().cloned().expect("User exists; qed");
+    // ffi::start_network(current_user);
     // async_std::task::spawn(async {
     //     let core = Core::new();
     //     let mut events = core.events.map(handle_event);
