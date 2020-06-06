@@ -1,13 +1,10 @@
-use super::event::Event;
-use crate::event::PeerDiscoverMessage;
 use futures::channel::mpsc::Sender;
 use libp2p::{
-    floodsub::{self, Floodsub, FloodsubEvent},
-    identity,
     mdns::{Mdns, MdnsEvent},
     swarm::NetworkBehaviourEventProcess,
-    Multiaddr, NetworkBehaviour, PeerId, Swarm,
+    NetworkBehaviour,
 };
+use primitives::{Event, PeerDiscoverMessage};
 
 #[derive(NetworkBehaviour)]
 pub struct CoreNetworkBehaviour {
@@ -21,14 +18,26 @@ impl NetworkBehaviourEventProcess<MdnsEvent> for CoreNetworkBehaviour {
         match event {
             MdnsEvent::Discovered(list) => {
                 for (peer_id, _) in list {
-                    self.event_sink
-                        .try_send(Event::PeerDiscovered(PeerDiscoverMessage { peer_id }));
+                    if let Err(e) =
+                        self.event_sink
+                            .try_send(Event::PeerDiscovered(PeerDiscoverMessage {
+                                peer_id: peer_id.to_base58().into(),
+                            }))
+                    {
+                        println!("Error sending message to event sink: {}", e);
+                    }
                 }
             }
             MdnsEvent::Expired(list) => {
                 for (peer_id, _) in list {
-                    self.event_sink
-                        .try_send(Event::PeerGone(PeerDiscoverMessage { peer_id }));
+                    if let Err(e) = self
+                        .event_sink
+                        .try_send(Event::PeerGone(PeerDiscoverMessage {
+                            peer_id: peer_id.to_base58().into(),
+                        }))
+                    {
+                        println!("Error sending message to event sink: {}", e);
+                    }
                 }
             }
         }

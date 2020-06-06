@@ -1,18 +1,14 @@
 mod error;
-mod event;
 mod ffi;
 mod network;
 mod utils;
 
-use error::{Error, Result};
-use event::Event;
-use futures::stream::{empty, Stream, StreamExt};
+use error::Result;
+use futures::stream::StreamExt;
 use libp2p::identity::secp256k1::{Keypair, SecretKey};
-use libp2p::{
-    mdns::{Mdns, MdnsEvent},
-    PeerId, Swarm,
-};
+use libp2p::{mdns::Mdns, PeerId, Swarm};
 use network::CoreNetworkBehaviour;
+use primitives::Event;
 
 const CHANNEL_BUFFER_SIZE: usize = 10;
 
@@ -29,7 +25,7 @@ pub fn start(secret: SecretKey, callback: impl Fn(Event) + Send + Sync + 'static
         callback(ev);
         futures::future::ready(())
     });
-    let mut behaviour = CoreNetworkBehaviour {
+    let behaviour = CoreNetworkBehaviour {
         mdns,
         event_sink: tx,
     };

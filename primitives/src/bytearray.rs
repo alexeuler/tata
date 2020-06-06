@@ -27,7 +27,7 @@ impl Into<Vec<u8>> for ByteArray {
 }
 
 impl ByteArray {
-    unsafe fn free(self) {
+    pub unsafe fn free(self) {
         let s = std::slice::from_raw_parts_mut(self.data, self.len);
         let s = s.as_mut_ptr();
         Box::from_raw(s);

@@ -1,72 +1,4 @@
-use crate::event::{Event, PlainEvent};
-use serde::Serialize;
-use std::mem::ManuallyDrop;
-
-/// Ffi representation of event
-#[repr(C)]
-pub struct CEvent {
-    /// Union tag
-    tag: PlainEvent,
-    /// Binary serialized json data
-    data: ByteArray,
-}
-
-impl From<Event> for CEvent {
-    fn from(ev: Event) -> CEvent {
-        match ev {
-            Event::PlainTextMessage(data) => CEvent {
-                tag: PlainEvent::PlainTextMessage,
-                data: serde_json::to_vec(&data)
-                    .expect("infallible conversion; qed")
-                    .into(),
-            },
-            Event::PeerDiscovered(data) => CEvent {
-                tag: PlainEvent::PeerDiscovered,
-                data: serde_json::to_vec(&data)
-                    .expect("infallible conversion; qed")
-                    .into(),
-            },
-            Event::PeerGone(data) => CEvent {
-                tag: PlainEvent::PeerGone,
-                data: serde_json::to_vec(&data)
-                    .expect("infallible conversion; qed")
-                    .into(),
-            },
-        }
-    }
-}
-
-#[repr(C)]
-pub struct ByteArray {
-    data: *mut u8,
-    len: usize,
-}
-
-impl From<Vec<u8>> for ByteArray {
-    fn from(v: Vec<u8>) -> Self {
-        let mut v = ManuallyDrop::new(v);
-        ByteArray {
-            data: v.as_mut_ptr(),
-            len: v.len(),
-        }
-    }
-}
-
-impl Into<Vec<u8>> for ByteArray {
-    fn into(self) -> Vec<u8> {
-        unsafe {
-            let res = std::slice::from_raw_parts(self.data, self.len).to_vec();
-            free_array(self);
-            res
-        }
-    }
-}
-
-#[repr(C)]
-pub struct CPair {
-    pub secret: ByteArray,
-    pub peer_id: ByteArray,
-}
+use primitives::{ByteArray, CEvent, CPair};
 
 #[no_mangle]
 pub extern "C" fn start_network(secret_array: ByteArray, callback: fn(CEvent)) -> bool {
@@ -87,10 +19,8 @@ pub extern "C" fn start_network(secret_array: ByteArray, callback: fn(CEvent)) -
 
 #[no_mangle]
 pub extern "C" fn free_array(array: ByteArray) {
-    let s = unsafe { std::slice::from_raw_parts_mut(array.data, array.len) };
-    let s = s.as_mut_ptr();
     unsafe {
-        Box::from_raw(s);
+        array.free();
     }
 }
 
