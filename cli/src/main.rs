@@ -30,6 +30,7 @@ mod db;
 mod error;
 mod ffi;
 mod models;
+mod reactor;
 mod repos;
 mod schema;
 

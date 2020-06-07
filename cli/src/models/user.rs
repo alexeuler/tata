@@ -1,6 +1,6 @@
 use super::peer_id::PeerId;
 use super::secret::Secret;
-use crate::ffi::generate_pair;
+use crate::ffi::generate_keypair;
 use crate::schema::users;
 use diesel::Queryable;
 
@@ -31,7 +31,7 @@ pub struct UpdateUser {
 
 impl NewUser {
     pub fn new(first_name: String, last_name: Option<String>) -> Self {
-        let (secret, peer_id) = generate_pair();
+        let (secret, peer_id) = generate_keypair();
         NewUser {
             first_name,
             last_name,

@@ -5,6 +5,7 @@ use diesel::deserialize::{self, FromSql};
 use diesel::serialize::{self, Output, ToSql};
 use diesel::sql_types::Text;
 use diesel::sqlite::Sqlite;
+use primitives::OpaquePeerId;
 use serde::Deserialize;
 use std::io::prelude::*;
 
@@ -41,8 +42,14 @@ impl PeerId {
     }
 }
 
-impl<T: AsRef<[u8]>> From<T> for PeerId {
-    fn from(data: T) -> Self {
-        PeerId(bs58::encode(data.as_ref()).into_string())
+impl From<Vec<u8>> for PeerId {
+    fn from(data: Vec<u8>) -> Self {
+        PeerId(bs58::encode(data).into_string())
+    }
+}
+
+impl From<OpaquePeerId> for PeerId {
+    fn from(peer_id: OpaquePeerId) -> Self {
+        PeerId(peer_id.into())
     }
 }

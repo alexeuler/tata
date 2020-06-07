@@ -9,3 +9,9 @@ impl From<String> for OpaquePeerId {
         Self(s)
     }
 }
+
+impl Into<String> for OpaquePeerId {
+    fn into(self) -> String {
+        self.0
+    }
+}
