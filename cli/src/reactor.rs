@@ -90,7 +90,7 @@ impl<T> CircularVec<T> {
         }
         Some(
             self.data
-                .get(pos)
+                .get(pos % self.size)
                 .expect("The element is in the buffer; qed"),
         )
     }
