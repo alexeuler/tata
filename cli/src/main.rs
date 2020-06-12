@@ -139,7 +139,6 @@ fn flush() {
 
 #[async_std::main]
 async fn main() -> Result<()> {
-    env_logger::init();
     let conn = db::establish_connection();
     db::run_migrations(&conn);
     let stdin = io::stdin();
