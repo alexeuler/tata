@@ -1,7 +1,11 @@
-use primitives::{ByteArray, CEvent, CPair};
+use primitives::{ByteArray, CEvent, CPair, LogLevel};
 
 #[no_mangle]
-pub extern "C" fn start_network(secret_array: ByteArray, callback: fn(CEvent)) -> bool {
+pub extern "C" fn start_network(
+    secret_array: ByteArray,
+    callback: fn(CEvent),
+    log_level: LogLevel,
+) -> bool {
     let secret_bytes: Vec<u8> = secret_array.into();
     let secret = match libp2p::identity::secp256k1::SecretKey::from_bytes(secret_bytes) {
         Ok(s) => s,
@@ -10,7 +14,7 @@ pub extern "C" fn start_network(secret_array: ByteArray, callback: fn(CEvent)) -
             return false;
         }
     };
-    if let Err(e) = crate::start(secret, move |ev| callback(ev.into())) {
+    if let Err(e) = crate::start(secret, move |ev| callback(ev.into()), log_level) {
         println!("Error: {}", e);
         return false;
     }

@@ -1,10 +1,13 @@
 use crate::models::*;
-use primitives::{ByteArray, CEvent, CPair, Event};
+use primitives::{ByteArray, CEvent, CPair, LogLevel};
 use std::convert::TryInto;
 
 extern "C" {
-    pub fn start_network(secret_array: ByteArray, callback: fn(CEvent)) -> bool;
-    pub fn free_array(array: ByteArray);
+    pub fn start_network(
+        secret_array: ByteArray,
+        callback: fn(CEvent),
+        log_level: LogLevel,
+    ) -> bool;
     pub fn generate_pair() -> CPair;
 }
 
@@ -12,7 +15,7 @@ pub fn start(secret: Secret) {
     let secret_bytes: Vec<u8> = secret.into();
     let secret_byte_array: ByteArray = secret_bytes.into();
     unsafe {
-        if !start_network(secret_byte_array, callback) {
+        if !start_network(secret_byte_array, callback, LogLevel::Info) {
             println!("There was an error starting network");
         }
     }

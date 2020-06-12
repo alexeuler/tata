@@ -8,12 +8,19 @@ use futures::stream::StreamExt;
 use libp2p::identity::secp256k1::{Keypair, SecretKey};
 use libp2p::{mdns::Mdns, PeerId, Swarm};
 use network::CoreNetworkBehaviour;
-use primitives::Event;
+use primitives::{Event, LogLevel};
 
 const CHANNEL_BUFFER_SIZE: usize = 10;
 
 /// Starts networking
-pub fn start(secret: SecretKey, callback: impl Fn(Event) + Send + Sync + 'static) -> Result<()> {
+pub fn start(
+    secret: SecretKey,
+    callback: impl Fn(Event) + Send + Sync + 'static,
+    log_level: LogLevel,
+) -> Result<()> {
+    env_logger::init();
+    log::info!("Starting network layer...");
+    println!("Yo");
     let keypair: Keypair = secret.into();
     let libp2p_keypair = libp2p::identity::Keypair::Secp256k1(keypair);
     let public_key = libp2p_keypair.public().clone();
