@@ -4,7 +4,8 @@ use diesel::sqlite::SqliteConnection;
 diesel_migrations::embed_migrations!("migrations");
 
 pub fn establish_connection() -> SqliteConnection {
-    let database_url = "file:db/main.sqlite3";
+    let db_name = std::env::var("DB_NAME").unwrap_or("main".to_string());
+    let database_url = format!("file:db/{}.sqlite3", db_name);
     SqliteConnection::establish(&database_url)
         .expect(&format!("Error connecting to {}", database_url))
 }

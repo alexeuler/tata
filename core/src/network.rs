@@ -24,7 +24,7 @@ impl NetworkBehaviourEventProcess<MdnsEvent> for CoreNetworkBehaviour {
                                 peer_id: peer_id.to_base58().into(),
                             }))
                     {
-                        println!("Error sending message to event sink: {}", e);
+                        log::error!("Error sending message to event sink: {}", e);
                     }
                 }
             }
@@ -36,7 +36,7 @@ impl NetworkBehaviourEventProcess<MdnsEvent> for CoreNetworkBehaviour {
                             peer_id: peer_id.to_base58().into(),
                         }))
                     {
-                        println!("Error sending message to event sink: {}", e);
+                        log::error!("Error sending message to event sink: {}", e);
                     }
                 }
             }

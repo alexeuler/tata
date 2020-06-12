@@ -10,12 +10,12 @@ pub extern "C" fn start_network(
     let secret = match libp2p::identity::secp256k1::SecretKey::from_bytes(secret_bytes) {
         Ok(s) => s,
         Err(e) => {
-            println!("Error: {}", e);
+            log::error!("Error: {}", e);
             return false;
         }
     };
     if let Err(e) = crate::start(secret, move |ev| callback(ev.into()), log_level) {
-        println!("Error: {}", e);
+        log::error!("Error: {}", e);
         return false;
     }
     true

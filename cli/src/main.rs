@@ -75,16 +75,6 @@ async fn handle_command(
                 let id = collect_id(stdin).await?;
                 users_repo.delete(id)?;
             }
-            Command::Start => {
-                ffi::start(current_user.secret.clone());
-                let events = events::EventStream::new();
-                let events_future = events.for_each(|ev| {
-                    println!("{:?}", ev);
-                    futures::future::ready(())
-                });
-                async_std::task::spawn(events_future);
-            }
-
             _ => println!("{}", Command::help()),
         }
     }
@@ -148,12 +138,21 @@ async fn main() -> Result<()> {
     let users_repo = repos::UsersRepo::new(&conn);
     let mut users = users_repo.list()?;
     let mut current_user = Default::default();
+
     if users.len() == 0 {
         handle_command("create_user", &conn, &stdin, &mut current_user).await?;
         users = users_repo.list()?;
         prompt();
     };
     current_user = users.first().cloned().expect("User exists; qed");
+    ffi::start(current_user.secret.clone());
+    let events = events::EventStream::new();
+    let events_future = events.for_each(|ev| {
+        println!("{:?}", ev);
+        futures::future::ready(())
+    });
+    async_std::task::spawn(events_future);
+
     loop {
         let _ = stdin.read_line(&mut buf).await?;
         match handle_command(&buf, &conn, &stdin, &mut current_user).await {

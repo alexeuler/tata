@@ -21,7 +21,7 @@ pub fn start(
     env_logger::Builder::from_default_env()
         .filter_level(log_level)
         .init();
-    log::info!("Starting network layer...");
+    log::debug!("Starting network layer");
     let keypair: Keypair = secret.into();
     let libp2p_keypair = libp2p::identity::Keypair::Secp256k1(keypair);
     let public_key = libp2p_keypair.public().clone();
@@ -30,6 +30,7 @@ pub fn start(
     let transport = libp2p::build_development_transport(libp2p_keypair)?;
     let (tx, rx) = futures::channel::mpsc::channel(CHANNEL_BUFFER_SIZE);
     let events = rx.for_each(move |ev| {
+        log::debug!("Sending event: {:?}", ev);
         callback(ev);
         futures::future::ready(())
     });
@@ -40,11 +41,12 @@ pub fn start(
 
     let mut swarm = Swarm::new(transport, behaviour, peer_id);
     Swarm::listen_on(&mut swarm, "/ip4/0.0.0.0/tcp/0".parse()?)?;
-    let swarm = swarm.for_each(|ev| {
+    let swarm = swarm.for_each(|_ev| {
         // callback(ev);
         futures::future::ready(())
     });
     async_std::task::spawn(swarm);
     async_std::task::spawn(events);
+    log::info!("Network layer started");
     Ok(())
 }
