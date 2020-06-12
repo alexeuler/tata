@@ -1,1 +1,1 @@
-pub type LogLevel = ::log::Level;
+pub type LogLevel = ::log::LevelFilter;

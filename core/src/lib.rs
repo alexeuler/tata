@@ -18,9 +18,8 @@ pub fn start(
     callback: impl Fn(Event) + Send + Sync + 'static,
     log_level: LogLevel,
 ) -> Result<()> {
-    env_logger::init();
+    env_logger::Builder::from_default_env().filter_level(log_level);
     log::info!("Starting network layer...");
-    println!("Yo");
     let keypair: Keypair = secret.into();
     let libp2p_keypair = libp2p::identity::Keypair::Secp256k1(keypair);
     let public_key = libp2p_keypair.public().clone();
