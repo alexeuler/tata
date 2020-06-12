@@ -6,11 +6,11 @@ use diesel::Queryable;
 
 #[derive(Debug, Queryable, Clone, Default)]
 pub struct User {
-    id: i32,
-    first_name: String,
-    last_name: Option<String>,
-    peer_id: PeerId,
-    secret: Secret,
+    pub id: i32,
+    pub first_name: String,
+    pub last_name: Option<String>,
+    pub peer_id: PeerId,
+    pub secret: Secret,
 }
 
 #[derive(Insertable)]

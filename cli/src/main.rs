@@ -10,6 +10,7 @@ use async_std::{
 use command::Command;
 use diesel::sqlite::SqliteConnection;
 use error::Result;
+use futures::stream::StreamExt;
 use models::*;
 // use std::error::Error;
 // use tata_core::Core;
@@ -28,6 +29,7 @@ use models::*;
 mod command;
 mod db;
 mod error;
+mod events;
 mod ffi;
 mod models;
 mod reactor;
@@ -144,14 +146,13 @@ async fn main() -> Result<()> {
         prompt();
     };
     current_user = users.first().cloned().expect("User exists; qed");
-    // ffi::start_network(current_user);
-    // async_std::task::spawn(async {
-    //     let core = Core::new();
-    //     let mut events = core.events.map(handle_event);
-    //     loop {
-    //         let _ = events.next().await;
-    //     }
-    // });
+    ffi::start(current_user.secret.clone());
+    let events = events::EventStream::new();
+    let events_future = events.for_each(|ev| {
+        println!("{:?}", ev);
+        futures::future::ready(())
+    });
+    async_std::task::spawn(events_future);
     loop {
         let _ = stdin.read_line(&mut buf).await?;
         match handle_command(&buf, &conn, &stdin, &mut current_user).await {
