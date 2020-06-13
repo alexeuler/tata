@@ -3,10 +3,7 @@ extern crate diesel_migrations;
 #[macro_use]
 extern crate diesel;
 
-use async_std::{
-    io::{self, prelude::*},
-    prelude::*,
-};
+use async_std::io;
 use command::Command;
 use diesel::sqlite::SqliteConnection;
 use error::Result;

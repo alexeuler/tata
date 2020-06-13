@@ -9,6 +9,7 @@ pub struct CEvent {
     pub data: ByteArray,
 }
 
+#[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub enum PlainEvent {
     PlainTextMessage,

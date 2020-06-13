@@ -5,7 +5,7 @@ use std::convert::TryInto;
 extern "C" {
     pub fn start_network(
         secret_array: ByteArray,
-        callback: fn(CEvent),
+        callback: extern "C" fn(CEvent),
         log_level: LogLevel,
     ) -> bool;
     pub fn generate_pair() -> CPair;
@@ -26,7 +26,8 @@ pub fn generate_keypair() -> (Secret, PeerId) {
     (Secret::new(secret_bytes), peer_id_bytes.into())
 }
 
-fn callback(ev: CEvent) {
+#[no_mangle]
+extern "C" fn callback(ev: CEvent) {
     match ev.try_into() {
         Ok(event) => crate::reactor::event_callback(event),
         Err(e) => println!("Error converting event: {}", e),
