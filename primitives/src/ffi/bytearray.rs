@@ -1,5 +1,6 @@
 use std::mem::ManuallyDrop;
 
+/// FFI representation of array of bytes
 #[repr(C)]
 pub struct ByteArray {
     data: *mut u8,
