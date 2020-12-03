@@ -1,11 +1,14 @@
+//! Network behaviour implementation
+
 use futures::channel::mpsc::Sender;
 use libp2p::{
     mdns::{Mdns, MdnsEvent},
     swarm::NetworkBehaviourEventProcess,
     NetworkBehaviour,
 };
-use primitives::{Event, PeerDiscoverMessage};
+use primitives::{Event, PeerDiscoveryMessage};
 
+/// Implementation of networking behaviour for core
 #[derive(NetworkBehaviour)]
 pub struct CoreNetworkBehaviour {
     pub mdns: Mdns,
@@ -20,7 +23,7 @@ impl NetworkBehaviourEventProcess<MdnsEvent> for CoreNetworkBehaviour {
                 for (peer_id, _) in list {
                     if let Err(e) =
                         self.event_sink
-                            .try_send(Event::PeerDiscovered(PeerDiscoverMessage {
+                            .try_send(Event::PeerDiscovered(PeerDiscoveryMessage {
                                 peer_id: peer_id.to_base58().into(),
                             }))
                     {
@@ -30,11 +33,11 @@ impl NetworkBehaviourEventProcess<MdnsEvent> for CoreNetworkBehaviour {
             }
             MdnsEvent::Expired(list) => {
                 for (peer_id, _) in list {
-                    if let Err(e) = self
-                        .event_sink
-                        .try_send(Event::PeerGone(PeerDiscoverMessage {
-                            peer_id: peer_id.to_base58().into(),
-                        }))
+                    if let Err(e) =
+                        self.event_sink
+                            .try_send(Event::PeerGone(PeerDiscoveryMessage {
+                                peer_id: peer_id.to_base58().into(),
+                            }))
                     {
                         log::error!("Error sending message to event sink: {}", e);
                     }

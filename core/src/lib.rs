@@ -1,5 +1,8 @@
+//! Provides underlying mechanics for p2p communcations. There are
+//! 2 types of exports in this module. One is is the root for using in Rust.
+//! The other is in the [ffi](./ffi/index.html) module for using in as a `C` library;
 mod error;
-mod ffi;
+pub mod ffi;
 mod network;
 mod utils;
 
@@ -13,6 +16,13 @@ use primitives::{Event, LogLevel};
 const CHANNEL_BUFFER_SIZE: usize = 10;
 
 /// Starts networking
+///
+/// # Arguments
+/// `secret` - secret key for the current peer
+///
+/// `callback` - triggered each time a network event is received
+///
+/// `log_level` - logging level for the lib
 pub fn start(
     secret: SecretKey,
     callback: impl Fn(Event) + Send + Sync + 'static,

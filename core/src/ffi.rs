@@ -1,9 +1,15 @@
-use primitives::{ByteArray, CEvent, CPair, LogLevel};
+//! Exports for `C` library
 
+use primitives::{
+    ffi::{ByteArray, Event, KeyPair},
+    LogLevel,
+};
+
+/// Start network, see [start_network](../fn.start.html)
 #[no_mangle]
 pub extern "C" fn start_network(
     secret_array: ByteArray,
-    callback: fn(CEvent),
+    callback: fn(Event),
     log_level: LogLevel,
 ) -> bool {
     let secret_bytes: Vec<u8> = secret_array.into();
@@ -21,6 +27,8 @@ pub extern "C" fn start_network(
     true
 }
 
+/// Free allocated ByteArray memory. This needs to be called e.g. after start function for `secret_array`
+/// if you're using the library from C.
 #[no_mangle]
 pub extern "C" fn free_array(array: ByteArray) {
     unsafe {
@@ -28,12 +36,13 @@ pub extern "C" fn free_array(array: ByteArray) {
     }
 }
 
+/// Generate secret keypair (to derive PeerId, i.e. p2p identity)
 #[no_mangle]
-pub extern "C" fn generate_pair() -> CPair {
+pub extern "C" fn generate_keypair() -> KeyPair {
     let (secret, peer_id) = super::utils::generate_secret();
     let secret_bytes = secret.to_bytes().to_vec();
     let peer_id_bytes = peer_id.into_bytes();
-    CPair {
+    KeyPair {
         secret: secret_bytes.into(),
         peer_id: peer_id_bytes.into(),
     }

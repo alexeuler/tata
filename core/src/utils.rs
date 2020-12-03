@@ -1,9 +1,12 @@
+//! Various utils
+
 use libp2p::identity::{
     secp256k1::{Keypair, SecretKey},
     PublicKey,
 };
 use libp2p::PeerId;
 
+/// Generate `libp2p` SecretKey and derive PeerId from it.
 pub fn generate_secret() -> (SecretKey, PeerId) {
     let keypair = Keypair::generate();
     let public_key = PublicKey::Secp256k1(keypair.public().clone());
