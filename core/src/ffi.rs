@@ -9,7 +9,7 @@ use primitives::{
 #[no_mangle]
 pub extern "C" fn start_network(
     secret_array: ByteArray,
-    callback: fn(Event),
+    callback: extern "C" fn(Event),
     log_level: LogLevel,
 ) -> bool {
     let secret_bytes: Vec<u8> = secret_array.into();
