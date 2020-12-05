@@ -1,14 +1,17 @@
 use crate::models::*;
-use primitives::{ByteArray, CEvent, CPair, LogLevel};
+use primitives::{
+    ffi::{ByteArray, Event, KeyPair},
+    LogLevel,
+};
 use std::convert::TryInto;
 
 extern "C" {
     pub fn start_network(
         secret_array: ByteArray,
-        callback: extern "C" fn(CEvent),
+        callback: extern "C" fn(Event),
         log_level: LogLevel,
     ) -> bool;
-    pub fn generate_pair() -> CPair;
+    pub fn k() -> KeyPair;
 }
 
 pub fn start(secret: Secret) {
@@ -22,20 +25,20 @@ pub fn start(secret: Secret) {
 }
 
 pub fn generate_keypair() -> (Secret, PeerId) {
-    let (secret_bytes, peer_id_bytes) = generate_pair_bytes();
+    let (secret_bytes, peer_id_bytes) = generate_keypair_bytes();
     (Secret::new(secret_bytes), peer_id_bytes.into())
 }
 
 #[no_mangle]
-extern "C" fn callback(ev: CEvent) {
+extern "C" fn callback(ev: Event) {
     match ev.try_into() {
         Ok(event) => crate::reactor::event_callback(event),
         Err(e) => println!("Error converting event: {}", e),
     }
 }
 
-fn generate_pair_bytes() -> (Vec<u8>, Vec<u8>) {
-    let CPair { secret, peer_id } = unsafe { generate_pair() };
+fn generate_keypair_bytes() -> (Vec<u8>, Vec<u8>) {
+    let KeyPair { secret, peer_id } = unsafe { k() };
     let res = (secret.into(), peer_id.into());
     res
 }
