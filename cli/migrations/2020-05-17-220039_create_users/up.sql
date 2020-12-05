@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    peer_id VARCHAR(255) NOT NULL,
+    online INTEGER NOT NULL,
+    secret BLOB
+);

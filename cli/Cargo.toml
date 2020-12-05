@@ -4,9 +4,14 @@ version = "0.1.0"
 authors = ["Alexey Karasev <karasev.alexey@gmail.com>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 structopt = "0.3"
 async-std = { version = "1.7", features = ["attributes"] }
 futures = "0.3"
+diesel = { version = "1.4", features = ["sqlite"] }
+diesel_migrations = { version = "1.4", features = ["sqlite"] }
+derive_more = "0.99"
+bs58 = "0.3"
+primitives = {path = "../primitives"}
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1"
