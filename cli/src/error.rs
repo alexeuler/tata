@@ -14,6 +14,10 @@ pub enum Error {
     ParseInt(std::num::ParseIntError),
     #[display(fmt = "Diesel error: {}", _0)]
     Diesel(diesel::result::Error),
+    #[display(fmt = "Diesel connection error: {}", _0)]
+    DieselConnection(diesel::result::ConnectionError),
+    #[display(fmt = "Diesel migrations error: {}", _0)]
+    DieselMigration(diesel_migrations::RunMigrationsError),
     #[display(fmt = "{}", _0)]
     Msg(String),
 }
@@ -25,6 +29,8 @@ impl std::error::Error for Error {
             Error::Io(e) => Some(e),
             Error::ParseInt(e) => Some(e),
             Error::Diesel(e) => Some(e),
+            Error::DieselConnection(e) => Some(e),
+            Error::DieselMigration(e) => Some(e),
             Error::Msg(_) => None,
         }
     }
