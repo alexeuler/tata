@@ -8,3 +8,5 @@ edition = "2018"
 
 [dependencies]
 structopt = "0.3"
+async-std = { version = "1.7", features = ["attributes"] }
+futures = "0.3"
