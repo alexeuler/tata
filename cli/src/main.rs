@@ -7,6 +7,7 @@ mod command_line;
 mod core;
 mod error;
 mod models;
+mod repos;
 mod schema;
 
 #[async_std::main]
