@@ -1,6 +1,6 @@
 use super::peer_id::PeerId;
 use super::secret::Secret;
-use crate::core::generate_keypair;
+use crate::core::create_keypair;
 use crate::schema::users;
 use diesel::Queryable;
 
@@ -32,7 +32,7 @@ pub struct UpdateUser {
 impl NewUser {
     /// Creates a local user with secret
     pub fn new(name: String) -> Self {
-        let (secret, peer_id) = generate_keypair();
+        let (secret, peer_id) = create_keypair();
         NewUser {
             name,
             peer_id,

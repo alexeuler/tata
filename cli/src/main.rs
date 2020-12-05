@@ -1,7 +1,7 @@
 use db::{establish_connection, run_migrations};
 use onboarding::onboard_if_necessary;
 use prelude::*;
-use repos::UsersRepoImpl;
+use repos::{UsersRepo, UsersRepoImpl};
 
 #[macro_use]
 extern crate diesel_migrations;
@@ -24,6 +24,11 @@ async fn main() -> Result<()> {
     run_migrations(&conn)?;
     let users_repo = UsersRepoImpl::new(&conn);
     onboard_if_necessary(&users_repo).await?;
+    let current_user = users_repo
+        .local_users()?
+        .pop()
+        .ok_or("Unexpected missing local user")?;
+    println!("Current user: {:?}", current_user);
     command_line::start_command_line().await;
     Ok(())
 }

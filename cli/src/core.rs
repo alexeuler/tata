@@ -13,7 +13,7 @@ extern "C" {
         callback: extern "C" fn(Event),
         log_level: LogLevel,
     ) -> bool;
-    pub fn k() -> KeyPair;
+    pub fn generate_keypair() -> KeyPair;
 }
 
 pub fn start(secret: Secret) {
@@ -26,7 +26,7 @@ pub fn start(secret: Secret) {
     }
 }
 
-pub fn generate_keypair() -> (Secret, PeerId) {
+pub fn create_keypair() -> (Secret, PeerId) {
     let (secret_bytes, peer_id_bytes) = generate_keypair_bytes();
     (Secret::new(secret_bytes), peer_id_bytes.into())
 }
@@ -40,7 +40,7 @@ extern "C" fn callback(ev: Event) {
 }
 
 fn generate_keypair_bytes() -> (Vec<u8>, Vec<u8>) {
-    let KeyPair { secret, peer_id } = unsafe { k() };
+    let KeyPair { secret, peer_id } = unsafe { generate_keypair() };
     let res = (secret.into(), peer_id.into());
     res
 }

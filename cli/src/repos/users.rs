@@ -6,6 +6,7 @@ use diesel::prelude::*;
 pub trait UsersRepo {
     fn list(&self) -> QueryResult<Vec<User>>;
     fn count(&self) -> QueryResult<i64>;
+    fn local_users(&self) -> QueryResult<Vec<User>>;
     fn find(&self, user_id: i32) -> QueryResult<Option<User>>;
     fn create(&self, user: &NewUser) -> QueryResult<()>;
     fn update(&self, user_id: i32, user: &UpdateUser) -> QueryResult<()>;
@@ -23,6 +24,13 @@ impl<'a> UsersRepo for UsersRepoImpl<'a> {
 
     fn count(&self) -> QueryResult<i64> {
         users.count().get_result(self.conn)
+    }
+
+    fn local_users(&self) -> QueryResult<Vec<User>> {
+        users
+            .filter(secret.is_not_null())
+            .order(id.desc())
+            .load::<User>(self.conn)
     }
 
     fn find(&self, user_id: i32) -> QueryResult<Option<User>> {
