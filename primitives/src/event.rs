@@ -1,7 +1,4 @@
-use crate::{
-    ffi::{ByteArray, Event as FFIEvent, EventTag},
-    OpaquePeerId,
-};
+use crate::ffi::{ByteArray, Event as FFIEvent, EventTag};
 
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -9,7 +6,7 @@ use std::convert::TryFrom;
 /// Plain text message sent by peer
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlainTextMessage {
-    pub from: OpaquePeerId,
+    pub from: String,
     pub text: String,
 }
 
@@ -24,7 +21,7 @@ impl Into<ByteArray> for PlainTextMessage {
 /// A peer discovered or gone
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PeerDiscoveryMessage {
-    pub peer_id: OpaquePeerId,
+    pub peer_id: String,
 }
 
 impl Into<ByteArray> for PeerDiscoveryMessage {
