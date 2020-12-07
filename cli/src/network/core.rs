@@ -33,10 +33,10 @@ pub fn create_keypair() -> (Secret, PeerId) {
 
 #[no_mangle]
 extern "C" fn callback(ev: Event) {
-    // match ev.try_into() {
-    //     Ok(event) => crate::reactor::event_callback(event),
-    //     Err(e) => println!("Error converting event: {}", e),
-    // }
+    match ev.try_into() {
+        Ok(event) => super::reactor::event_callback(event),
+        Err(e) => println!("Error converting event: {}", e),
+    }
 }
 
 fn generate_keypair_bytes() -> (Vec<u8>, Vec<u8>) {

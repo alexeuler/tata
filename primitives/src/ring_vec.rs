@@ -17,6 +17,8 @@ impl<T> RingVec<T> {
         }
     }
 
+    /// Push an element. If the `size` limit is reached
+    /// it will start overwriting elements in the beginning
     pub fn push(&mut self, elem: T) {
         self.pos += 1;
         if self.data.len() != self.size {
@@ -26,8 +28,10 @@ impl<T> RingVec<T> {
         }
     }
 
+    /// Get the element. If the `pos` is out of bounds (not in the last `size` pushed elements)
+    /// returns `None`.
     pub fn get(&self, pos: usize) -> Option<&T> {
-        if pos >= self.pos {
+        if (pos >= self.pos) || (pos + self.size < self.pos) {
             return None;
         }
         Some(

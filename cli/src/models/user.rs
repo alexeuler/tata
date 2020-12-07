@@ -1,6 +1,6 @@
 use super::peer_id::PeerId;
 use super::secret::Secret;
-use crate::core::create_keypair;
+use crate::network::create_keypair;
 use crate::schema::users;
 use diesel::Queryable;
 

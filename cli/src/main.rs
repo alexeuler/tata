@@ -1,4 +1,7 @@
+use async_std::task::spawn;
 use db::{establish_connection, run_migrations};
+use futures::{future::ready, StreamExt};
+use network::start;
 use onboarding::onboard_if_necessary;
 use prelude::*;
 use repos::{UsersRepo, UsersRepoImpl};
@@ -9,10 +12,10 @@ extern crate diesel_migrations;
 extern crate diesel;
 
 mod command_line;
-mod core;
 mod db;
 mod error;
 mod models;
+mod network;
 mod onboarding;
 mod prelude;
 mod repos;
@@ -29,6 +32,12 @@ async fn main() -> Result<()> {
         .pop()
         .ok_or("Unexpected missing local user")?;
     println!("Current user: {:?}", current_user);
+    let network_stream = start(current_user.secret.expect("Local user has secret; qed"));
+    let network_future = network_stream.for_each(|ev| {
+        println!("{:?}", ev);
+        ready(())
+    });
+    spawn(network_future);
     command_line::start_command_line().await;
     Ok(())
 }
