@@ -15,6 +15,7 @@ pub struct Event {
 #[derive(Debug, Clone, Copy)]
 pub enum EventTag {
     PlainTextMessage,
+    Metadata,
     PeerDiscovered,
     PeerGone,
 }
