@@ -2,6 +2,7 @@
 use std::string::FromUtf8Error;
 
 use derive_more::{Display, From};
+use libp2p::swarm::ProtocolsHandlerUpgrErr;
 
 pub type Result<T> = std::result::Result<T, Error>;
 

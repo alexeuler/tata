@@ -11,7 +11,7 @@ use futures::stream::StreamExt;
 use libp2p::identity::secp256k1::{Keypair, SecretKey};
 use libp2p::{mdns::Mdns, PeerId, Swarm};
 use network::CoreNetworkBehaviour;
-use primitives::{Event, LogLevel};
+use primitives::{Event, LogLevel, Metadata};
 
 const CHANNEL_BUFFER_SIZE: usize = 10;
 
@@ -25,6 +25,7 @@ const CHANNEL_BUFFER_SIZE: usize = 10;
 /// `log_level` - logging level for the lib
 pub fn start(
     secret: SecretKey,
+    metadata: Metadata,
     callback: impl Fn(Event) + Send + Sync + 'static,
     log_level: LogLevel,
 ) -> Result<()> {

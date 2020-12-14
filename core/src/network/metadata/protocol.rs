@@ -1,6 +1,7 @@
 use crate::Result;
 use futures::{future, prelude::*};
 use libp2p::{core::UpgradeInfo, swarm::NegotiatedSubstream, InboundUpgrade, OutboundUpgrade};
+use primitives::Metadata;
 use serde::{Deserialize, Serialize};
 use std::iter;
 
@@ -34,12 +35,6 @@ impl OutboundUpgrade<NegotiatedSubstream> for MetadataProtocol {
     fn upgrade_outbound(self, stream: NegotiatedSubstream, _: Self::Info) -> Self::Future {
         future::ok(stream)
     }
-}
-
-/// Metadata for p2p exchange
-#[derive(Serialize, Deserialize)]
-pub struct Metadata {
-    pub name: String,
 }
 
 pub async fn send_metadata<S>(mut stream: S, metadata: Metadata) -> Result<()>

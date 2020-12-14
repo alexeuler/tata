@@ -1,5 +1,6 @@
 use crate::ffi::{ByteArray, Event as FFIEvent, EventTag};
 
+use super::metadata::Metadata;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
@@ -32,13 +33,7 @@ impl Into<ByteArray> for PeerDiscoveryMessage {
     }
 }
 
-/// A metadata from peer message
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MetadataMessage {
-    pub peer_id: String,
-}
-
-impl Into<ByteArray> for MetadataMessage {
+impl Into<ByteArray> for Metadata {
     fn into(self) -> ByteArray {
         serde_json::to_vec(&self)
             .expect("infallible conversion; qed")
@@ -52,7 +47,7 @@ pub enum Event {
     /// Plain text message sent by peer
     PlainTextMessage(PlainTextMessage),
     /// Metadata message sent by peer
-    Metadata(MetadataMessage),
+    Metadata(Metadata),
     /// A new peer discovered
     PeerDiscovered(PeerDiscoveryMessage),
     /// A peer is gone

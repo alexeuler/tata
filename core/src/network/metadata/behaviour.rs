@@ -11,22 +11,28 @@ use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
 
+use super::handler::MetadataHandler;
+
 /// Network behaviour for adding new connections
-pub struct MetadataBehaviour {}
+pub struct MetadataBehaviour {
+    pending_peers: Vec<PeerId>,
+}
 
 impl MetadataBehaviour {
     /// Create new behaviour
     pub fn new() -> Self {
-        Self {}
+        Self {
+            pending_peers: Vec::new(),
+        }
     }
 }
 
 impl NetworkBehaviour for MetadataBehaviour {
-    type ProtocolsHandler = DummyProtocolsHandler;
+    type ProtocolsHandler = MetadataHandler;
     type OutEvent = ();
 
     fn new_handler(&mut self) -> Self::ProtocolsHandler {
-        DummyProtocolsHandler::default()
+        MetadataHandler::default()
     }
 
     fn addresses_of_peer(&mut self, _: &PeerId) -> Vec<Multiaddr> {
@@ -59,23 +65,19 @@ impl NetworkBehaviour for MetadataBehaviour {
             Self::OutEvent,
         >,
     > {
-        if let Ok(mut new_peers_ref) = self.new_peers.lock() {
-            if let Some(peer_id) = new_peers_ref.pop() {
-                let self_peer_id = params.local_peer_id();
-                // Avoid duplex connections
-                if self_peer_id < &peer_id {
-                    log::debug!("Connecting peer {:?}", peer_id);
-                    return Poll::Ready(NetworkBehaviourAction::DialPeer {
-                        peer_id,
-                        condition: DialPeerCondition::Disconnected,
-                    });
-                } else {
-                    log::debug!("Waiting for connection from peer {:?}", peer_id);
-                    return Poll::Pending;
-                }
+        if let Some(peer_id) = self.pending_peers.pop() {
+            let self_peer_id = params.local_peer_id();
+            // Avoid duplex connections
+            if self_peer_id < &peer_id {
+                log::debug!("Connecting peer {:?}", peer_id);
+                return Poll::Ready(NetworkBehaviourAction::DialPeer {
+                    peer_id,
+                    condition: DialPeerCondition::Disconnected,
+                });
+            } else {
+                log::debug!("Waiting for connection from peer {:?}", peer_id);
+                return Poll::Pending;
             }
-        } else {
-            log::error!("Poisoned mutex in MetadataBehaviour");
         }
         Poll::Pending
     }
