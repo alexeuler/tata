@@ -4,57 +4,97 @@ use libp2p::{
     core::connection::{ConnectedPoint, ConnectionId},
     swarm::protocols_handler::DummyProtocolsHandler,
     swarm::DialPeerCondition,
-    swarm::{NetworkBehaviour, NetworkBehaviourAction, PollParameters, ProtocolsHandler},
+    swarm::{
+        NetworkBehaviour, NetworkBehaviourAction, NotifyHandler, PollParameters, ProtocolsHandler,
+    },
     Multiaddr, PeerId,
 };
-use std::collections::HashSet;
+use primitives::{Event, PlainTextMessage};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
 
-use super::{handler::PrivateChatHandler, protocol::HandshakeMetadata};
+use super::{
+    handler::{InEvent, PrivateChatHandler},
+    protocol::HandshakeMetadata,
+};
 
 /// Network behaviour for adding new connections
 pub struct PrivateChatBehaviour {
-    pending_peers: Vec<PeerId>,
     local_metadata: HandshakeMetadata,
+    pending_events: VecDeque<Event>,
+    pending_messages: VecDeque<PlainTextMessage>,
+    pending_connections: HashSet<PeerId>,
+    connected: HashMap<PeerId, HashSet<Multiaddr>>,
 }
 
 impl PrivateChatBehaviour {
     /// Create new behaviour
     pub fn new(local_metadata: HandshakeMetadata) -> Self {
         Self {
-            pending_peers: Vec::new(),
+            pending_events: VecDeque::new(),
+            pending_messages: VecDeque::new(),
+            pending_connections: HashSet::new(),
+            connected: HashMap::new(),
             local_metadata,
         }
+    }
+
+    /// Send message to peer
+    pub fn send_message(&self, message: PlainTextMessage) {
+        self.pending_messages.push_back(message);
     }
 }
 
 impl NetworkBehaviour for PrivateChatBehaviour {
     type ProtocolsHandler = PrivateChatHandler;
-    type OutEvent = ();
+    type OutEvent = Event;
 
     fn new_handler(&mut self) -> Self::ProtocolsHandler {
         PrivateChatHandler::new(self.local_metadata)
     }
 
-    fn addresses_of_peer(&mut self, _: &PeerId) -> Vec<Multiaddr> {
-        Vec::new()
+    fn addresses_of_peer(&mut self, peer_id: &PeerId) -> Vec<Multiaddr> {
+        self.connected
+            .get(peer_id)
+            .map(|set| set.iter().cloned().collect())
+            .unwrap_or(Vec::new())
     }
 
     fn inject_connected(&mut self, _: &PeerId) {}
 
-    fn inject_connection_established(&mut self, _: &PeerId, _: &ConnectionId, _: &ConnectedPoint) {}
+    fn inject_connection_established(
+        &mut self,
+        peer_id: &PeerId,
+        _: &ConnectionId,
+        connected_point: &ConnectedPoint,
+    ) {
+        self.pending_connections.remove(peer_id);
+        let addresses = self.connected.entry(*peer_id).or_insert(HashSet::new());
+        addresses.insert(*connected_point.get_remote_address());
+    }
 
     fn inject_disconnected(&mut self, _: &PeerId) {}
 
-    fn inject_connection_closed(&mut self, _: &PeerId, _: &ConnectionId, _: &ConnectedPoint) {}
+    fn inject_connection_closed(
+        &mut self,
+        peer_id: &PeerId,
+        _: &ConnectionId,
+        connected_point: &ConnectedPoint,
+    ) {
+        self.pending_connections.remove(peer_id);
+        self.connected.entry(*peer_id).and_modify(|set| {
+            set.remove(connected_point.get_remote_address());
+        });
+    }
 
     fn inject_event(
         &mut self,
         _: PeerId,
         _: ConnectionId,
-        _: <Self::ProtocolsHandler as ProtocolsHandler>::OutEvent,
+        event: <Self::ProtocolsHandler as ProtocolsHandler>::OutEvent,
     ) {
+        self.pending_events.push_back(event);
     }
 
     fn poll(
@@ -67,24 +107,28 @@ impl NetworkBehaviour for PrivateChatBehaviour {
             Self::OutEvent,
         >,
     > {
-        if let Some(peer_id) = self.pending_peers.pop() {
-            let self_peer_id = params.local_peer_id();
-            // Avoid duplex connections
-            if self_peer_id < &peer_id {
-                log::debug!("Connecting peer {:?}", peer_id);
+        if let Some(message) = self.pending_messages.pop_front() {
+            let peer_id =
+                PeerId::from_bytes(message.from.as_bytes().to_vec()).expect("Infallible; qed");
+            if self.connected.contains_key(&peer_id) {
+                return Poll::Ready(NetworkBehaviourAction::NotifyHandler {
+                    peer_id: peer_id,
+                    handler: NotifyHandler::Any,
+                    event: InEvent::SendMessage(message),
+                });
+            }
+            if !self.pending_connections.contains(&peer_id) {
+                self.pending_connections.insert(peer_id);
+                self.pending_messages.push_back(message);
                 return Poll::Ready(NetworkBehaviourAction::DialPeer {
-                    peer_id,
+                    peer_id: peer_id,
                     condition: DialPeerCondition::Disconnected,
                 });
-            } else {
-                log::debug!("Waiting for connection from peer {:?}", peer_id);
-                return Poll::Pending;
             }
+        }
+        if let Some(event) = self.pending_events.pop_front() {
+            return Poll::Ready(NetworkBehaviourAction::GenerateEvent(event));
         }
         Poll::Pending
     }
-}
-
-impl PrivateChatBehaviour {
-    pub fn send_message(&self, msg: Vec<u8>) {}
 }

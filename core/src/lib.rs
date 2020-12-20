@@ -10,7 +10,7 @@ use error::Result;
 use futures::stream::StreamExt;
 use libp2p::identity::secp256k1::{Keypair, SecretKey};
 use libp2p::{mdns::Mdns, PeerId, Swarm};
-use network::CoreNetworkBehaviour;
+use network::{CoreNetworkBehaviour, HandshakeMetadata};
 use primitives::{Event, LogLevel, Metadata};
 
 const CHANNEL_BUFFER_SIZE: usize = 10;
@@ -37,7 +37,6 @@ pub fn start(
     let libp2p_keypair = libp2p::identity::Keypair::Secp256k1(keypair);
     let public_key = libp2p_keypair.public().clone();
     let peer_id = PeerId::from_public_key(public_key);
-    let mdns = Mdns::new()?;
     let transport = libp2p::build_development_transport(libp2p_keypair)?;
     let (tx, rx) = futures::channel::mpsc::channel(CHANNEL_BUFFER_SIZE);
     let events = rx.for_each(move |ev| {
@@ -45,10 +44,12 @@ pub fn start(
         callback(ev);
         futures::future::ready(())
     });
-    let behaviour = CoreNetworkBehaviour {
-        mdns,
-        event_sink: tx,
-    };
+    let behaviour = CoreNetworkBehaviour::new(
+        HandshakeMetadata {
+            name: metadata.name,
+        },
+        tx,
+    )?;
 
     let mut swarm = Swarm::new(transport, behaviour, peer_id);
     Swarm::listen_on(&mut swarm, "/ip4/0.0.0.0/tcp/0".parse()?)?;

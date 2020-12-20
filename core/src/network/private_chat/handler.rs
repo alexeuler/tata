@@ -36,8 +36,13 @@ pub struct PrivateChatHandler {
     retry_value: Duration,
 }
 
+#[derive(Debug, Clone)]
+pub enum InEvent {
+    SendMessage(PlainTextMessage),
+}
+
 impl ProtocolsHandler for PrivateChatHandler {
-    type InEvent = ();
+    type InEvent = InEvent;
     type OutEvent = Event;
     type Error = Error;
     type InboundProtocol = PrivateChatProtocol;
@@ -69,7 +74,11 @@ impl ProtocolsHandler for PrivateChatHandler {
         self.pending_metadata = Some(metadata);
     }
 
-    fn inject_event(&mut self, _: ()) {}
+    fn inject_event(&mut self, event: InEvent) {
+        match event {
+            InEvent::SendMessage(message) => self.pending_sending_messages.push_back(message),
+        }
+    }
 
     fn inject_dial_upgrade_error(&mut self, _info: (), error: ProtocolsHandlerUpgrErr<Error>) {
         log::error!("Error upgrading connection: {}", error);
@@ -165,10 +174,6 @@ impl PrivateChatHandler {
             retry: None,
             retry_value: INITIAL_RETRY,
         }
-    }
-
-    pub fn send(&self, message: PlainTextMessage) {
-        self.pending_sending_messages.push_back(message)
     }
 }
 
