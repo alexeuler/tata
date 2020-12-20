@@ -12,6 +12,9 @@ pub enum Error {
     /// Libp2p transport error
     #[display(fmt = "Transport Io error: {}", _0)]
     TransportIo(libp2p::TransportError<std::io::Error>),
+    /// Libp2p transport error
+    #[display(fmt = "Transport Io error: {}", _0)]
+    Libp2pReadOne(libp2p::core::upgrade::ReadOneError),
     /// Address parase error
     #[display(fmt = "Address parse error: {}", _0)]
     Addr(libp2p::core::multiaddr::Error),
@@ -33,6 +36,7 @@ impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Error::TransportIo(e) => Some(e),
+            Error::Libp2pReadOne(e) => Some(e),
             Error::Addr(e) => Some(e),
             Error::Io(e) => Some(e),
             Error::Json(e) => Some(e),
