@@ -26,7 +26,7 @@ const MAX_RETRY: Duration = Duration::from_secs(120);
 
 pub struct PrivateChatHandler {
     local_metadata: HandshakeMetadata,
-    stream: Option<Framed<NegotiatedSubstream, LengthCodec>>,
+    framed_socket: Option<Framed<NegotiatedSubstream, LengthCodec>>,
     pending_metadata: Option<HandshakeMetadata>,
     pending_sending_messages: VecDeque<PlainTextMessage>,
     outgoing_message: Option<u64>,
@@ -58,8 +58,8 @@ impl ProtocolsHandler for PrivateChatHandler {
         protocol: (HandshakeMetadata, NegotiatedSubstream),
         _: (),
     ) {
-        let (metadata, stream) = protocol;
-        self.stream = Some(Framed::new(stream, LengthCodec {}));
+        let (metadata, framed_socket) = protocol;
+        self.framed_socket = Some(Framed::new(framed_socket, LengthCodec {}));
         self.pending_metadata = Some(metadata);
     }
 
@@ -68,8 +68,8 @@ impl ProtocolsHandler for PrivateChatHandler {
         protocol: (HandshakeMetadata, NegotiatedSubstream),
         _: (),
     ) {
-        let (metadata, stream) = protocol;
-        self.stream = Some(Framed::new(stream, LengthCodec {}));
+        let (metadata, framed_socket) = protocol;
+        self.framed_socket = Some(Framed::new(framed_socket, LengthCodec {}));
         self.pending_metadata = Some(metadata);
     }
 
@@ -81,7 +81,7 @@ impl ProtocolsHandler for PrivateChatHandler {
 
     fn inject_dial_upgrade_error(&mut self, _info: (), error: ProtocolsHandlerUpgrErr<Error>) {
         log::error!("Error upgrading connection: {}", error);
-        self.stream = None;
+        self.framed_socket = None;
         self.errors.push_front(ErrorMessage::Unreachable);
         self.retry = Some(Delay::new(self.retry_value));
         self.retry_value *= RETRY_EXP;
@@ -105,8 +105,8 @@ impl ProtocolsHandler for PrivateChatHandler {
                 ErrorMessage::Unreachable,
             )));
         }
-        if let Some(stream) = self.stream.as_mut() {
-            match stream.poll_ready_unpin(cx) {
+        if let Some(framed_socket) = self.framed_socket.as_mut() {
+            match framed_socket.poll_ready_unpin(cx) {
                 Poll::Ready(_) => {
                     if let Some(timestamp) = self.outgoing_message.take() {
                         return Poll::Ready(ProtocolsHandlerEvent::Custom(
@@ -116,12 +116,12 @@ impl ProtocolsHandler for PrivateChatHandler {
                     if let Some(message) = self.pending_sending_messages.pop_front() {
                         let bytes = serde_json::to_vec(&message).expect("Infallible; qed");
                         log::debug!("Sending message with timestamp `{}`", message.timestamp);
-                        stream.start_send_unpin(bytes.into());
+                        framed_socket.start_send_unpin(bytes.into());
                     }
                 }
                 _ => (),
             }
-            match stream.poll_next_unpin(cx) {
+            match framed_socket.poll_next_unpin(cx) {
                 Poll::Pending => (),
                 Poll::Ready(Some(Ok(bytes))) => {
                     match serde_json::from_slice::<PlainTextMessage>(&bytes) {
@@ -132,7 +132,7 @@ impl ProtocolsHandler for PrivateChatHandler {
                             ));
                         }
                         Err(e) => {
-                            log::error!("Error parsing bytes to json: {:?}", bytes);
+                            log::error!("Error parsing bytes to json: {} : {:?}", e, bytes);
                             return Poll::Ready(ProtocolsHandlerEvent::Custom(Event::Error(
                                 ErrorMessage::Parse,
                             )));
@@ -161,7 +161,7 @@ impl PrivateChatHandler {
             pending_metadata: None,
             pending_sending_messages: VecDeque::new(),
             outgoing_message: None,
-            stream: None,
+            framed_socket: None,
             errors: VecDeque::new(),
             retry: None,
             retry_value: INITIAL_RETRY,
