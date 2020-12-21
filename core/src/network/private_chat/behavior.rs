@@ -41,7 +41,7 @@ impl PrivateChatBehaviour {
     }
 
     /// Send message to peer
-    pub fn send_message(&self, message: PlainTextMessage) {
+    pub fn send_message(&mut self, message: PlainTextMessage) {
         self.pending_messages.push_back(message);
     }
 }
@@ -51,7 +51,7 @@ impl NetworkBehaviour for PrivateChatBehaviour {
     type OutEvent = Event;
 
     fn new_handler(&mut self) -> Self::ProtocolsHandler {
-        PrivateChatHandler::new(self.local_metadata)
+        PrivateChatHandler::new(self.local_metadata.clone())
     }
 
     fn addresses_of_peer(&mut self, peer_id: &PeerId) -> Vec<Multiaddr> {
@@ -70,8 +70,11 @@ impl NetworkBehaviour for PrivateChatBehaviour {
         connected_point: &ConnectedPoint,
     ) {
         self.pending_connections.remove(peer_id);
-        let addresses = self.connected.entry(*peer_id).or_insert(HashSet::new());
-        addresses.insert(*connected_point.get_remote_address());
+        let addresses = self
+            .connected
+            .entry(peer_id.clone())
+            .or_insert(HashSet::new());
+        addresses.insert(connected_point.get_remote_address().clone());
     }
 
     fn inject_disconnected(&mut self, _: &PeerId) {}
@@ -83,7 +86,7 @@ impl NetworkBehaviour for PrivateChatBehaviour {
         connected_point: &ConnectedPoint,
     ) {
         self.pending_connections.remove(peer_id);
-        self.connected.entry(*peer_id).and_modify(|set| {
+        self.connected.entry(peer_id.clone()).and_modify(|set| {
             set.remove(connected_point.get_remote_address());
         });
     }
@@ -112,16 +115,16 @@ impl NetworkBehaviour for PrivateChatBehaviour {
                 PeerId::from_bytes(message.from.as_bytes().to_vec()).expect("Infallible; qed");
             if self.connected.contains_key(&peer_id) {
                 return Poll::Ready(NetworkBehaviourAction::NotifyHandler {
-                    peer_id: peer_id,
+                    peer_id: peer_id.clone(),
                     handler: NotifyHandler::Any,
                     event: InEvent::SendMessage(message),
                 });
             }
             if !self.pending_connections.contains(&peer_id) {
-                self.pending_connections.insert(peer_id);
+                self.pending_connections.insert(peer_id.clone());
                 self.pending_messages.push_back(message);
                 return Poll::Ready(NetworkBehaviourAction::DialPeer {
-                    peer_id: peer_id,
+                    peer_id: peer_id.clone(),
                     condition: DialPeerCondition::Disconnected,
                 });
             }

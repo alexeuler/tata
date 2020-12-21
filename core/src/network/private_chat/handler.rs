@@ -29,8 +29,7 @@ pub struct PrivateChatHandler {
     stream: Option<Framed<NegotiatedSubstream, LengthCodec>>,
     pending_metadata: Option<HandshakeMetadata>,
     pending_sending_messages: VecDeque<PlainTextMessage>,
-    outgoing_messages:
-        HashMap<u64, Pin<Box<dyn Future<Output = std::result::Result<(), std::io::Error>> + Send>>>,
+    outgoing_message: Option<u64>,
     errors: VecDeque<ErrorMessage>,
     retry: Option<Delay>,
     retry_value: Duration,
@@ -51,7 +50,7 @@ impl ProtocolsHandler for PrivateChatHandler {
     type InboundOpenInfo = ();
 
     fn listen_protocol(&self) -> SubstreamProtocol<PrivateChatProtocol, ()> {
-        SubstreamProtocol::new(PrivateChatProtocol::new(self.local_metadata), ())
+        SubstreamProtocol::new(PrivateChatProtocol::new(self.local_metadata.clone()), ())
     }
 
     fn inject_fully_negotiated_inbound(
@@ -101,33 +100,26 @@ impl ProtocolsHandler for PrivateChatHandler {
         &mut self,
         cx: &mut Context<'_>,
     ) -> Poll<ProtocolsHandlerEvent<PrivateChatProtocol, (), Self::OutEvent, Self::Error>> {
-        if let Some(error) = self.errors.pop_back() {
+        if let Some(_) = self.errors.pop_back() {
             return Poll::Ready(ProtocolsHandlerEvent::Custom(Event::Error(
                 ErrorMessage::Unreachable,
             )));
         }
-        if let Some(stream) = self.stream {
-            let timestamps = self.outgoing_messages.keys().collect::<Vec<_>>();
-            for &timestamp in timestamps {
-                if let Some(future) = self.outgoing_messages.get(&timestamp) {
-                    match future.poll_unpin(cx) {
-                        Poll::Pending => (),
-                        Poll::Ready(_) => {
-                            self.outgoing_messages.remove(&timestamp);
-                            log::debug!("Message with timestamps `{}` sent", timestamp);
-                            return Poll::Ready(ProtocolsHandlerEvent::Custom(
-                                Event::SentPlainTextMessage(Timestamp { timestamp }),
-                            ));
-                        }
+        if let Some(stream) = self.stream.as_mut() {
+            match stream.poll_ready_unpin(cx) {
+                Poll::Ready(_) => {
+                    if let Some(timestamp) = self.outgoing_message.take() {
+                        return Poll::Ready(ProtocolsHandlerEvent::Custom(
+                            Event::SentPlainTextMessage(Timestamp { timestamp }),
+                        ));
+                    }
+                    if let Some(message) = self.pending_sending_messages.pop_front() {
+                        let bytes = serde_json::to_vec(&message).expect("Infallible; qed");
+                        log::debug!("Sending message with timestamp `{}`", message.timestamp);
+                        stream.start_send_unpin(bytes.into());
                     }
                 }
-            }
-            for message in self.pending_sending_messages.drain(..) {
-                let bytes: Vec<u8> = serde_json::to_vec(&message).expect("Infallible; qed");
-                log::debug!("Sending message with timestamp `{}`", message.timestamp);
-                let future = stream.send(bytes.into());
-                self.outgoing_messages
-                    .insert(message.timestamp, future.boxed());
+                _ => (),
             }
             match stream.poll_next_unpin(cx) {
                 Poll::Pending => (),
@@ -168,7 +160,7 @@ impl PrivateChatHandler {
             local_metadata,
             pending_metadata: None,
             pending_sending_messages: VecDeque::new(),
-            outgoing_messages: HashMap::new(),
+            outgoing_message: None,
             stream: None,
             errors: VecDeque::new(),
             retry: None,

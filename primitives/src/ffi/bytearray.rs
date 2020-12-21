@@ -1,4 +1,4 @@
-use std::mem::ManuallyDrop;
+use std::{convert::TryInto, mem::ManuallyDrop, string::FromUtf8Error};
 
 /// FFI representation of array of bytes
 #[repr(C)]
@@ -24,6 +24,22 @@ impl Into<Vec<u8>> for ByteArray {
             self.free();
             res
         }
+    }
+}
+
+impl From<String> for ByteArray {
+    fn from(v: String) -> Self {
+        let bytes = v.as_bytes().to_vec();
+        bytes.into()
+    }
+}
+
+impl TryInto<String> for ByteArray {
+    type Error = FromUtf8Error;
+
+    fn try_into(self) -> Result<String, FromUtf8Error> {
+        let bytes: Vec<u8> = self.into();
+        String::from_utf8(bytes)
     }
 }
 

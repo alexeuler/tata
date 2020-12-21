@@ -1,5 +1,7 @@
 //! Exports for `C` library
 
+use std::convert::TryInto;
+
 use primitives::{
     ffi::{ByteArray, Event, KeyPair},
     LogLevel,
@@ -9,9 +11,18 @@ use primitives::{
 #[no_mangle]
 pub extern "C" fn start_network(
     secret_array: ByteArray,
+    name: ByteArray,
     callback: extern "C" fn(Event),
     log_level: LogLevel,
 ) -> bool {
+    let name: Result<String, _> = name.try_into();
+    let name = match name {
+        Ok(name) => name,
+        Err(e) => {
+            log::error!("Error parsing peer name: {}", e);
+            return false;
+        }
+    };
     let secret_bytes: Vec<u8> = secret_array.into();
     let secret = match libp2p::identity::secp256k1::SecretKey::from_bytes(secret_bytes) {
         Ok(s) => s,
@@ -20,7 +31,7 @@ pub extern "C" fn start_network(
             return false;
         }
     };
-    if let Err(e) = crate::start(secret, move |ev| callback(ev.into()), log_level) {
+    if let Err(e) = crate::start(secret, name, move |ev| callback(ev.into()), log_level) {
         log::error!("Error: {}", e);
         return false;
     }

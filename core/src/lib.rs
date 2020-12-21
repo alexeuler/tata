@@ -25,7 +25,7 @@ const CHANNEL_BUFFER_SIZE: usize = 10;
 /// `log_level` - logging level for the lib
 pub fn start(
     secret: SecretKey,
-    metadata: Metadata,
+    name: String,
     callback: impl Fn(Event) + Send + Sync + 'static,
     log_level: LogLevel,
 ) -> Result<()> {
@@ -33,6 +33,7 @@ pub fn start(
         .filter_level(log_level)
         .init();
     log::debug!("Starting network layer");
+    let metadata = Metadata { name };
     let keypair: Keypair = secret.into();
     let libp2p_keypair = libp2p::identity::Keypair::Secp256k1(keypair);
     let public_key = libp2p_keypair.public().clone();
