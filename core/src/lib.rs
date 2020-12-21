@@ -26,7 +26,7 @@ const CHANNEL_BUFFER_SIZE: usize = 10;
 pub fn start(
     secret: SecretKey,
     name: String,
-    callback: impl Fn(Event) + Send + Sync + 'static,
+    callback: impl Fn(Event) + Send + Sync + Copy + 'static,
     log_level: LogLevel,
 ) -> Result<()> {
     env_logger::Builder::from_default_env()
@@ -54,8 +54,8 @@ pub fn start(
 
     let mut swarm = Swarm::new(transport, behaviour, peer_id);
     Swarm::listen_on(&mut swarm, "/ip4/0.0.0.0/tcp/0".parse()?)?;
-    let swarm = swarm.for_each(|_ev| {
-        // callback(ev);
+    let swarm = swarm.for_each(move |ev: Event| {
+        callback(ev);
         futures::future::ready(())
     });
     async_std::task::spawn(swarm);

@@ -15,6 +15,7 @@ use super::private_chat::{HandshakeMetadata, PrivateChatBehaviour};
 
 /// Implementation of networking behaviour for core
 #[derive(NetworkBehaviour)]
+#[behaviour(out_event = "Event")]
 pub struct CoreNetworkBehaviour {
     pub mdns: Mdns,
     pub private_chat: PrivateChatBehaviour,

@@ -169,11 +169,6 @@ impl PrivateChatHandler {
     }
 }
 
-enum State {
-    Initialized,
-    Open,
-}
-
 #[derive(Debug)]
 enum PrivateChatError {
     Finished,
