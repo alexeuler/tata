@@ -5,7 +5,7 @@ use primitives::{
     ffi::{ByteArray, Event, KeyPair},
     LogLevel,
 };
-use std::convert::TryInto;
+use std::{convert::TryInto, time::SystemTime};
 
 extern "C" {
     pub fn start_network(
@@ -26,6 +26,14 @@ pub fn start(secret: Secret, name: String) {
             println!("There was an error starting network");
         }
     }
+}
+
+pub fn send(peer: String, message: String) -> bool {
+    let now = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .expect("Infallible timestamp; qed")
+        .as_millis() as u64;
+    unsafe { send_message(peer.into(), message.into(), now) }
 }
 
 pub fn create_keypair() -> (Secret, PeerId) {
