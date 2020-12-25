@@ -1,11 +1,19 @@
 //! Exports for `C` library
 
+use async_std::{future::poll_fn, task::Poll};
+use futures::stream::StreamExt;
+use libp2p::swarm::SwarmBuilder;
+use once_cell::sync::OnceCell;
 use std::convert::TryInto;
+use std::sync::Mutex;
 
 use primitives::{
     ffi::{ByteArray, Event, KeyPair},
-    LogLevel,
+    LogLevel, PlainTextMessage,
 };
+
+use crate::network::CoreNetworkBehaviour;
+static SWARM: OnceCell<Mutex<libp2p::Swarm<CoreNetworkBehaviour>>> = OnceCell::new();
 
 /// Start network, see [start_network](../fn.start.html)
 #[no_mangle]
@@ -31,10 +39,41 @@ pub extern "C" fn start_network(
             return false;
         }
     };
-    if let Err(e) = crate::start(secret, name, move |ev| callback(ev.into()), log_level) {
-        log::error!("Error: {}", e);
+    env_logger::Builder::from_default_env()
+        .filter_level(log_level)
+        .init();
+    log::debug!("Starting network layer");
+    let (swarm, mut events) = match crate::create_swarm(secret, name) {
+        Ok(x) => x,
+        Err(e) => {
+            log::error!("Error creating swarm: {}", e);
+            return false;
+        }
+    };
+    if let Err(_) = SWARM.set(Mutex::new(swarm)) {
+        log::error!("Error setting static swarm");
         return false;
-    }
+    };
+
+    async_std::task::spawn(poll_fn(move |cx| {
+        match events.poll_next_unpin(cx) {
+            Poll::Ready(Some(event)) => {
+                log::debug!("Sending event: {:?}", event);
+                callback(event.into());
+                return Poll::Ready(());
+            }
+            _ => (),
+        }
+        if let Some(swarm_mutex) = SWARM.get() {
+            if let Ok(mut swarm) = swarm_mutex.lock() {
+                match swarm.poll_next_unpin(cx) {
+                    _ => (),
+                }
+            }
+        }
+        Poll::Pending
+    }));
+
     true
 }
 
@@ -45,6 +84,38 @@ pub extern "C" fn free_array(array: ByteArray) {
     unsafe {
         array.free();
     }
+}
+
+/// Send a message to peer
+#[no_mangle]
+pub extern "C" fn send_message(peer_id: ByteArray, message: ByteArray, timestamp: u64) -> bool {
+    if let Some(swarm_mutex) = SWARM.get() {
+        if let Ok(mut swarm) = swarm_mutex.lock() {
+            let from = match peer_id.try_into() {
+                Ok(from) => from,
+                Err(e) => {
+                    log::error!("Error converting `peer_id` bytearray: {}", e);
+                    return false;
+                }
+            };
+            let text = match message.try_into() {
+                Ok(text) => text,
+                Err(e) => {
+                    log::error!("Error converting `message` bytearray: {}", e);
+                    return false;
+                }
+            };
+            let message = PlainTextMessage {
+                from,
+                timestamp,
+                text,
+            };
+            swarm.private_chat.send_message(message);
+            return true;
+        }
+    }
+    log::error!("Couldn't extract swarm from static cell");
+    false
 }
 
 /// Generate secret keypair (to derive PeerId, i.e. p2p identity)
