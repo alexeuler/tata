@@ -109,8 +109,18 @@ impl NetworkBehaviour for PrivateChatBehaviour {
         >,
     > {
         if let Some(message) = self.pending_messages.pop_front() {
-            let peer_id =
-                PeerId::from_bytes(message.from.as_bytes().to_vec()).expect("Infallible; qed");
+            log::debug!("Sending message: {:?}", message);
+            let peer_id = match PeerId::from_bytes(message.from.as_bytes().to_vec()) {
+                Ok(peer_id) => peer_id,
+                Err(_) => {
+                    log::error!(
+                        "Error parsing bytes `{:x?}` into peer_id",
+                        message.from.as_bytes(),
+                    );
+                    // TODO - proceed out of if clause
+                    return Poll::Pending;
+                }
+            };
             if self.connected.contains_key(&peer_id) {
                 return Poll::Ready(NetworkBehaviourAction::NotifyHandler {
                     peer_id: peer_id.clone(),

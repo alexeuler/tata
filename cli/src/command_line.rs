@@ -35,7 +35,7 @@ pub async fn start_command_line() {
         let command = match Opt::from_iter_safe(tokens) {
             Ok(v) => v,
             Err(e) => {
-                println!("{}", e);
+                log::error!("{}", e);
                 continue;
             }
         };

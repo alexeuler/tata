@@ -22,8 +22,8 @@ pub fn start(secret: Secret, name: String) {
     let secret_bytes: Vec<u8> = secret.into();
     let secret_byte_array: ByteArray = secret_bytes.into();
     unsafe {
-        if !start_network(secret_byte_array, name.into(), callback, LogLevel::Info) {
-            println!("There was an error starting network");
+        if !start_network(secret_byte_array, name.into(), callback, LogLevel::Debug) {
+            log::error!("There was an error starting network");
         }
     }
 }
@@ -33,6 +33,7 @@ pub fn send(peer: String, message: String) -> bool {
         .duration_since(SystemTime::UNIX_EPOCH)
         .expect("Infallible timestamp; qed")
         .as_millis() as u64;
+    log::debug!("Sending message: {}, {}, {}", peer, message, now);
     unsafe { send_message(peer.into(), message.into(), now) }
 }
 
