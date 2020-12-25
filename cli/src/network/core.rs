@@ -10,17 +10,19 @@ use std::convert::TryInto;
 extern "C" {
     pub fn start_network(
         secret_array: ByteArray,
+        name: ByteArray,
         callback: extern "C" fn(Event),
         log_level: LogLevel,
     ) -> bool;
+    pub fn send_message(peer_id: ByteArray, message: ByteArray, timestamp: u64) -> bool;
     pub fn generate_keypair() -> KeyPair;
 }
 
-pub fn start(secret: Secret) {
+pub fn start(secret: Secret, name: String) {
     let secret_bytes: Vec<u8> = secret.into();
     let secret_byte_array: ByteArray = secret_bytes.into();
     unsafe {
-        if !start_network(secret_byte_array, callback, LogLevel::Info) {
+        if !start_network(secret_byte_array, name.into(), callback, LogLevel::Info) {
             println!("There was an error starting network");
         }
     }

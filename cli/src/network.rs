@@ -7,7 +7,7 @@ use events::NetworkEventStream;
 
 pub use self::core::create_keypair;
 
-pub fn start(secret: Secret) -> NetworkEventStream {
-    core::start(secret);
+pub fn start(secret: Secret, name: String) -> NetworkEventStream {
+    core::start(secret, name);
     NetworkEventStream::new()
 }

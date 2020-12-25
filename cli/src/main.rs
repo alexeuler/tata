@@ -32,7 +32,10 @@ async fn main() -> Result<()> {
         .pop()
         .ok_or("Unexpected missing local user")?;
     println!("Current user: {:?}", current_user);
-    let network_stream = start(current_user.secret.expect("Local user has secret; qed"));
+    let network_stream = start(
+        current_user.secret.expect("Local user has secret; qed"),
+        current_user.name,
+    );
     let network_future = network_stream.for_each(|ev| {
         println!("{:?}", ev);
         ready(())
