@@ -2,7 +2,6 @@
 
 use libp2p::{
     core::connection::{ConnectedPoint, ConnectionId},
-    swarm::protocols_handler::DummyProtocolsHandler,
     swarm::DialPeerCondition,
     swarm::{
         NetworkBehaviour, NetworkBehaviourAction, NotifyHandler, PollParameters, ProtocolsHandler,
@@ -11,7 +10,6 @@ use libp2p::{
 };
 use primitives::{Event, PlainTextMessage};
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
 
 use super::{
@@ -103,7 +101,7 @@ impl NetworkBehaviour for PrivateChatBehaviour {
     fn poll(
         &mut self,
         _: &mut Context<'_>,
-        params: &mut impl PollParameters,
+        _: &mut impl PollParameters,
     ) -> Poll<
         NetworkBehaviourAction<
             <Self::ProtocolsHandler as ProtocolsHandler>::InEvent,

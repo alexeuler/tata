@@ -2,7 +2,6 @@
 
 use async_std::{future::poll_fn, task::Poll};
 use futures::stream::StreamExt;
-use libp2p::swarm::SwarmBuilder;
 use once_cell::sync::OnceCell;
 use std::convert::TryInto;
 use std::sync::Mutex;

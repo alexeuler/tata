@@ -7,16 +7,11 @@ mod network;
 mod utils;
 
 use error::Result;
-use futures::channel::mpsc::{Receiver, Sender};
-use futures::stream::StreamExt;
-use libp2p::{
-    core::either::EitherOutput,
-    identity::secp256k1::{Keypair, SecretKey},
-    swarm::{protocols_handler::DummyProtocolsHandler, ExpandedSwarm, IntoProtocolsHandlerSelect},
-};
-use libp2p::{mdns::Mdns, PeerId, Swarm};
+use futures::channel::mpsc::Receiver;
+use libp2p::identity::secp256k1::{Keypair, SecretKey};
+use libp2p::{PeerId, Swarm};
 use network::{CoreNetworkBehaviour, HandshakeMetadata};
-use primitives::{Event, LogLevel, Metadata};
+use primitives::{Event, Metadata};
 
 const CHANNEL_BUFFER_SIZE: usize = 10;
 

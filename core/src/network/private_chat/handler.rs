@@ -1,6 +1,5 @@
 use futures::prelude::*;
 use futures_timer::Delay;
-use libp2p::core::upgrade;
 use libp2p::swarm::{
     KeepAlive, NegotiatedSubstream, ProtocolsHandler, ProtocolsHandlerEvent,
     ProtocolsHandlerUpgrErr, SubstreamProtocol,
@@ -8,17 +7,10 @@ use libp2p::swarm::{
 use primitives::{ErrorMessage, Event, PlainTextMessage, Timestamp};
 
 use super::protocol::{HandshakeMetadata, PrivateChatProtocol};
-use crate::error::{Error, Result};
+use crate::error::Error;
 use futures_codec::{Framed, LengthCodec};
-use std::{
-    collections::{HashMap, VecDeque},
-    error::Error as StdError,
-    time::Duration,
-};
-use std::{
-    pin::Pin,
-    task::{Context, Poll},
-};
+use std::task::{Context, Poll};
+use std::{collections::VecDeque, time::Duration};
 
 const INITIAL_RETRY: Duration = Duration::from_secs(1);
 const RETRY_EXP: u32 = 2;
@@ -116,7 +108,13 @@ impl ProtocolsHandler for PrivateChatHandler {
                     if let Some(message) = self.pending_sending_messages.pop_front() {
                         let bytes = serde_json::to_vec(&message).expect("Infallible; qed");
                         log::debug!("Sending message with timestamp `{}`", message.timestamp);
-                        framed_socket.start_send_unpin(bytes.into());
+                        if let Err(e) = framed_socket.start_send_unpin(bytes.into()) {
+                            log::error!(
+                                "Error sending message with timestamp `{}`: {}",
+                                message.timestamp,
+                                e
+                            );
+                        }
                     }
                 }
                 _ => (),
@@ -165,31 +163,6 @@ impl PrivateChatHandler {
             errors: VecDeque::new(),
             retry: None,
             retry_value: INITIAL_RETRY,
-        }
-    }
-}
-
-#[derive(Debug)]
-enum PrivateChatError {
-    Finished,
-    Other(Box<dyn StdError + Send + 'static>),
-}
-
-impl std::fmt::Display for PrivateChatError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            PrivateChatError::Finished => write!(f, "PrivateChat error: Finished")?,
-            PrivateChatError::Other(e) => write!(f, "PrivateChat error: {}", e)?,
-        }
-        Ok(())
-    }
-}
-
-impl StdError for PrivateChatError {
-    fn source(&self) -> Option<&(dyn StdError + 'static)> {
-        match self {
-            PrivateChatError::Finished => None,
-            PrivateChatError::Other(e) => Some(&**e),
         }
     }
 }
