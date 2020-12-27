@@ -110,7 +110,15 @@ impl NetworkBehaviour for PrivateChatBehaviour {
     > {
         if let Some(message) = self.pending_messages.pop_front() {
             log::debug!("Sending message: {:?}", message);
-            let peer_id = match PeerId::from_bytes(message.from.as_bytes().to_vec()) {
+            let peer_bytes = match bs58::decode(message.from.clone()).into_vec() {
+                Ok(bytes) => bytes,
+                Err(e) => {
+                    log::error!("Error parsing peer base58 string `{:}`", message.from);
+                    // TODO - proceed out of if clause
+                    return Poll::Pending;
+                }
+            };
+            let peer_id = match PeerId::from_bytes(peer_bytes) {
                 Ok(peer_id) => peer_id,
                 Err(_) => {
                     log::error!(
