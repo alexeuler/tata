@@ -49,7 +49,7 @@ pub fn use_reactor(f: impl FnOnce(&mut Reactor)) {
     if let Ok(mut reactor_mut) = REACTOR.lock() {
         f(&mut *reactor_mut)
     } else {
-        log::error!("Poisoned mutex for reactor");
+        println!("Poisoned mutex for reactor");
     }
 }
 

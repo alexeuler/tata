@@ -27,22 +27,22 @@ enum Opt {
 pub async fn start_command_line() {
     loop {
         let mut command = String::new();
-        io::stdin()
+        std::io::stdin()
             .read_line(&mut command)
-            .await
+            // .await
             .expect("Failed to read line");
         let tokens = vec!["."].into_iter().chain(command.split_whitespace());
         let command = match Opt::from_iter_safe(tokens) {
             Ok(v) => v,
             Err(e) => {
-                log::error!("{}", e);
+                println!("{}", e);
                 continue;
             }
         };
         match command {
             Opt::SendMessage { peer, message } => {
                 if !send(peer, message) {
-                    log::error!("Error sending message to peer");
+                    println!("Error sending message to peer");
                 }
             }
             _ => (),

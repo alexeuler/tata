@@ -1,7 +1,7 @@
 //! Exports for `C` library
 
 use async_std::{future::poll_fn, task::Poll};
-use futures::stream::StreamExt;
+use futures::{channel::mpsc::Sender, stream::StreamExt};
 use once_cell::sync::OnceCell;
 use std::convert::TryInto;
 use std::sync::Mutex;
@@ -11,8 +11,12 @@ use primitives::{
     LogLevel, PlainTextMessage,
 };
 
-use crate::network::CoreNetworkBehaviour;
-static SWARM: OnceCell<Mutex<libp2p::Swarm<CoreNetworkBehaviour>>> = OnceCell::new();
+static EVENTS_SENDER: OnceCell<Mutex<Sender<IncomingEvent>>> = OnceCell::new();
+const CHANNEL_BUFFER_SIZE: usize = 10;
+
+enum IncomingEvent {
+    Message(PlainTextMessage),
+}
 
 /// Start network, see [start_network](../fn.start.html)
 #[no_mangle]
@@ -20,6 +24,7 @@ pub extern "C" fn start_network(
     secret_array: ByteArray,
     name: ByteArray,
     callback: extern "C" fn(Event),
+    enable_logs: bool,
     log_level: LogLevel,
 ) -> bool {
     let name: Result<String, _> = name.try_into();
@@ -38,36 +43,48 @@ pub extern "C" fn start_network(
             return false;
         }
     };
-    env_logger::Builder::from_default_env()
-        .filter_level(log_level)
-        .init();
+    if enable_logs {
+        env_logger::Builder::from_default_env()
+            .filter_level(log_level)
+            .init();
+    }
     log::debug!("Starting network layer");
-    let (swarm, mut events) = match crate::create_swarm(secret, name) {
+    let (mut swarm, mut out_events) = match crate::create_swarm(secret, name) {
         Ok(x) => x,
         Err(e) => {
             log::error!("Error creating swarm: {}", e);
             return false;
         }
     };
-    if let Err(_) = SWARM.set(Mutex::new(swarm)) {
-        log::error!("Error setting static swarm");
-        return false;
-    };
+    let (in_events_tx, mut in_events_rx) = futures::channel::mpsc::channel(CHANNEL_BUFFER_SIZE);
+    if let Err(_e) = EVENTS_SENDER.set(Mutex::new(in_events_tx)) {
+        log::error!("Error setting global in_events_tx");
+    }
 
     async_std::task::spawn(poll_fn(move |cx| {
-        match events.poll_next_unpin(cx) {
-            Poll::Ready(Some(event)) => {
-                log::debug!("Sending event: {:?}", event);
-                callback(event.into());
-                return Poll::Ready(());
-            }
-            _ => (),
-        }
-        if let Some(swarm_mutex) = SWARM.get() {
-            if let Ok(mut swarm) = swarm_mutex.lock() {
-                match swarm.poll_next_unpin(cx) {
-                    _ => (),
+        loop {
+            match out_events.poll_next_unpin(cx) {
+                Poll::Ready(Some(event)) => {
+                    callback(event.into());
                 }
+                _ => break,
+            }
+        }
+        loop {
+            match in_events_rx.poll_next_unpin(cx) {
+                Poll::Ready(Some(IncomingEvent::Message(message))) => {
+                    swarm.private_chat.send_message(message);
+                }
+                _ => break,
+            }
+        }
+        loop {
+            match swarm.poll_next_unpin(cx) {
+                Poll::Ready(None) => {
+                    log::error!("Swarm is finished");
+                    return Poll::Ready(());
+                }
+                _ => break,
             }
         }
         Poll::Pending
@@ -88,8 +105,8 @@ pub extern "C" fn free_array(array: ByteArray) {
 /// Send a message to peer
 #[no_mangle]
 pub extern "C" fn send_message(peer_id: ByteArray, message: ByteArray, timestamp: u64) -> bool {
-    if let Some(swarm_mutex) = SWARM.get() {
-        if let Ok(mut swarm) = swarm_mutex.lock() {
+    if let Some(sender_mutex) = EVENTS_SENDER.get() {
+        if let Ok(mut sender) = sender_mutex.lock() {
             let from = match peer_id.try_into() {
                 Ok(from) => from,
                 Err(e) => {
@@ -109,7 +126,9 @@ pub extern "C" fn send_message(peer_id: ByteArray, message: ByteArray, timestamp
                 timestamp,
                 text,
             };
-            swarm.private_chat.send_message(message);
+            if let Err(e) = sender.try_send(IncomingEvent::Message(message)) {
+                log::error!("Error sending message to tx: {}", e);
+            }
             return true;
         }
     }
