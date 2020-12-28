@@ -1,5 +1,6 @@
 //! Contains network behavior for establishing connections with newly discovered peers
 
+use super::error::Result;
 use libp2p::{
     core::connection::{ConnectedPoint, ConnectionId},
     swarm::DialPeerCondition,
@@ -41,6 +42,36 @@ impl PrivateChatBehaviour {
     /// Send message to peer
     pub fn send_message(&mut self, message: PlainTextMessage) {
         self.pending_messages.push_back(message);
+    }
+
+    fn try_poll_message(
+        &mut self,
+        _: &mut Context<'_>,
+        _: &mut impl PollParameters,
+    ) -> Result<
+        Poll<NetworkBehaviourAction<<PrivateChatHandler as ProtocolsHandler>::InEvent, Event>>,
+    > {
+        if let Some(message) = self.pending_messages.pop_front() {
+            log::debug!("Sending message: {:?}", message);
+            let peer_bytes = bs58::decode(message.from.clone()).into_vec()?;
+            let peer_id = PeerId::from_bytes(peer_bytes)?;
+            if self.connected.contains_key(&peer_id) {
+                return Ok(Poll::Ready(NetworkBehaviourAction::NotifyHandler {
+                    peer_id: peer_id.clone(),
+                    handler: NotifyHandler::Any,
+                    event: InEvent::SendMessage(message),
+                }));
+            }
+            if !self.pending_connections.contains(&peer_id) {
+                self.pending_connections.insert(peer_id.clone());
+                self.pending_messages.push_back(message);
+                return Ok(Poll::Ready(NetworkBehaviourAction::DialPeer {
+                    peer_id: peer_id.clone(),
+                    condition: DialPeerCondition::Disconnected,
+                }));
+            }
+        }
+        Ok(Poll::Pending)
     }
 }
 

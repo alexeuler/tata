@@ -1,4 +1,5 @@
 mod behavior;
+mod error;
 mod handler;
 mod protocol;
 
