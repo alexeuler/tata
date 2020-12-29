@@ -4,9 +4,13 @@ use libp2p::swarm::{
     KeepAlive, NegotiatedSubstream, ProtocolsHandler, ProtocolsHandlerEvent,
     ProtocolsHandlerUpgrErr, SubstreamProtocol,
 };
-use primitives::{ErrorMessage, Event, PlainTextMessage, Timestamp};
+use primitives::{ErrorMessage, Event, PlainTextMessage};
+use std::pin::Pin;
 
-use super::protocol::{HandshakeMetadata, PrivateChatProtocol};
+use super::{
+    error::Result,
+    protocol::{HandshakeMetadata, PrivateChatProtocol},
+};
 use crate::error::Error;
 use futures_codec::{Framed, LengthCodec};
 use std::task::{Context, Poll};
@@ -22,6 +26,7 @@ pub struct PrivateChatHandler {
     pending_metadata: Option<HandshakeMetadata>,
     pending_sending_messages: VecDeque<PlainTextMessage>,
     pending_substream_open: bool,
+    outgoing_message: Option<u64>,
     errors: VecDeque<ErrorMessage>,
     retry: Option<Delay>,
     retry_value: Duration,
@@ -48,30 +53,31 @@ impl ProtocolsHandler for PrivateChatHandler {
 
     fn inject_fully_negotiated_inbound(
         &mut self,
-        protocol: (HandshakeMetadata, NegotiatedSubstream),
+        protocol: (HandshakeMetadata, Framed<NegotiatedSubstream, LengthCodec>),
         _: (),
     ) {
         log::debug!("Private chat: Injected fully negotiated inbound");
         self.pending_substream_open = false;
         let (metadata, framed_socket) = protocol;
-        self.framed_socket = Some(Framed::new(framed_socket, LengthCodec {}));
+        log::debug!("Peer Metadata: {:?}", metadata);
+        self.framed_socket = Some(framed_socket);
         self.pending_metadata = Some(metadata);
     }
 
     fn inject_fully_negotiated_outbound(
         &mut self,
-        protocol: (HandshakeMetadata, NegotiatedSubstream),
+        protocol: (HandshakeMetadata, Framed<NegotiatedSubstream, LengthCodec>),
         _: (),
     ) {
         log::debug!("Private chat: Injected fully negotiated outbound");
         self.pending_substream_open = false;
         let (metadata, framed_socket) = protocol;
-        self.framed_socket = Some(Framed::new(framed_socket, LengthCodec {}));
+        log::debug!("Peer Metadata: {:?}", metadata);
+        self.framed_socket = Some(framed_socket);
         self.pending_metadata = Some(metadata);
     }
 
     fn inject_event(&mut self, event: InEvent) {
-        log::debug!("---- Putting message into queue");
         match event {
             InEvent::SendMessage(message) => self.pending_sending_messages.push_back(message),
         }
@@ -99,7 +105,8 @@ impl ProtocolsHandler for PrivateChatHandler {
         cx: &mut Context<'_>,
     ) -> Poll<ProtocolsHandlerEvent<PrivateChatProtocol, (), Self::OutEvent, Self::Error>> {
         log::debug!("Polling handler");
-        if let Some(_) = self.errors.pop_back() {
+        if let Some(e) = self.errors.pop_back() {
+            log::error!("Error in errors: {:?}", e);
             return Poll::Ready(ProtocolsHandlerEvent::Custom(Event::Error(
                 ErrorMessage::Unreachable,
             )));
@@ -120,16 +127,24 @@ impl ProtocolsHandler for PrivateChatHandler {
             match framed_socket.poll_ready_unpin(cx) {
                 Poll::Ready(_) => {
                     if let Some(message) = self.pending_sending_messages.pop_front() {
+                        self.outgoing_message = Some(message.timestamp);
                         let bytes = serde_json::to_vec(&message).expect("Infallible; qed");
-                        log::debug!("Sending message with timestamp `{}`", message.timestamp);
                         if let Err(e) = framed_socket.start_send_unpin(bytes.into()) {
-                            log::error!(
-                                "Error sending message with timestamp `{}`: {}",
-                                message.timestamp,
-                                e
-                            );
+                            log::error!("Error sending message: {}", e);
+                            // Todo - add feedback error sending
+                            return Poll::Ready(ProtocolsHandlerEvent::Custom(Event::Error(
+                                ErrorMessage::Network,
+                            )));
                         }
                     }
+                }
+                Poll::Pending => (),
+            }
+            // poll for sent message
+            match framed_socket.poll_flush_unpin(cx) {
+                Poll::Ready(_) => {
+                    let timestamp = self.outgoing_message.take();
+                    log::debug!("Sent message with timestamp: {:?}", timestamp);
                 }
                 _ => (),
             }
@@ -172,6 +187,7 @@ impl PrivateChatHandler {
             local_metadata,
             pending_metadata: None,
             pending_sending_messages: VecDeque::new(),
+            outgoing_message: None,
             pending_substream_open: false,
             framed_socket: None,
             errors: VecDeque::new(),

@@ -1,12 +1,17 @@
 use crate::error::Error;
 use futures::{AsyncRead, AsyncWrite};
+use futures_codec::{Framed, LengthCodec};
 use libp2p::{
     core::{upgrade, UpgradeInfo},
     InboundUpgrade, OutboundUpgrade,
 };
+use primitives::PlainTextMessage;
 use serde::{Deserialize, Serialize};
 use std::future::Future;
 use std::pin::Pin;
+
+use super::error::Result;
+use futures::prelude::*;
 
 pub struct PrivateChatProtocol {
     local_metadata: HandshakeMetadata,
@@ -25,20 +30,22 @@ impl<TSocket> InboundUpgrade<TSocket> for PrivateChatProtocol
 where
     TSocket: AsyncRead + AsyncWrite + Send + Unpin + 'static,
 {
-    type Output = (HandshakeMetadata, TSocket);
+    type Output = (HandshakeMetadata, Framed<TSocket, LengthCodec>);
     type Error = Error;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Output, Self::Error>> + Send>>;
+    type Future =
+        Pin<Box<dyn Future<Output = std::result::Result<Self::Output, Self::Error>> + Send>>;
 
-    fn upgrade_inbound(self, mut socket: TSocket, _: Self::Info) -> Self::Future {
-        log::debug!("---- Upgrade inbound");
+    fn upgrade_inbound(self, socket: TSocket, _: Self::Info) -> Self::Future {
+        log::trace!("Upgrade inbound for private chat");
         Box::pin(async move {
-            let packet = upgrade::read_one(&mut socket, 2048).await?;
-            let s = String::from_utf8(packet)?;
-            let metadata = serde_json::from_str(&s)?;
+            let mut framed_socket = Framed::new(socket, LengthCodec {});
+            let mut buf = Vec::new();
+            framed_socket.read(&mut buf).await?;
             let outbound_message = self.metadata_message();
-            upgrade::write_one(&mut socket, &outbound_message).await?;
-
-            Ok((metadata, socket))
+            framed_socket.send(outbound_message.into()).await?;
+            let s = String::from_utf8(buf)?;
+            let metadata = serde_json::from_str(&s)?;
+            Ok((metadata, framed_socket))
         })
     }
 }
@@ -47,19 +54,22 @@ impl<TSocket> OutboundUpgrade<TSocket> for PrivateChatProtocol
 where
     TSocket: AsyncRead + AsyncWrite + Send + Unpin + 'static,
 {
-    type Output = (HandshakeMetadata, TSocket);
+    type Output = (HandshakeMetadata, Framed<TSocket, LengthCodec>);
     type Error = Error;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Output, Self::Error>> + Send>>;
+    type Future =
+        Pin<Box<dyn Future<Output = std::result::Result<Self::Output, Self::Error>> + Send>>;
 
-    fn upgrade_outbound(self, mut socket: TSocket, _: Self::Info) -> Self::Future {
-        log::debug!("---- Upgrade outbound");
+    fn upgrade_outbound(self, socket: TSocket, _: Self::Info) -> Self::Future {
+        log::trace!("Upgrade outbound for private chat");
         Box::pin(async move {
             let outbound_message = self.metadata_message();
-            upgrade::write_one(&mut socket, &outbound_message).await?;
-            let packet = upgrade::read_one(&mut socket, 2048).await?;
-            let s = String::from_utf8(packet)?;
+            let mut framed_socket = Framed::new(socket, LengthCodec {});
+            framed_socket.send(outbound_message.into()).await?;
+            let mut buf = Vec::new();
+            framed_socket.read(&mut buf).await?;
+            let s = String::from_utf8(buf)?;
             let metadata = serde_json::from_str(&s)?;
-            Ok((metadata, socket))
+            Ok((metadata, framed_socket))
         })
     }
 }

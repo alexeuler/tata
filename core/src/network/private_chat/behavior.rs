@@ -112,12 +112,10 @@ impl NetworkBehaviour for PrivateChatBehaviour {
             Self::OutEvent,
         >,
     > {
-        log::debug!("-----Polling private chat");
         // Handle all pending messages
         for _ in 0..self.pending_messages.len() {
             if let Some((peer_id, message)) = self.pending_messages.pop_front() {
                 if self.connected.contains_key(&peer_id) {
-                    log::debug!("-----Notifying handler");
                     return Poll::Ready(NetworkBehaviourAction::NotifyHandler {
                         peer_id: peer_id.clone(),
                         handler: NotifyHandler::Any,
