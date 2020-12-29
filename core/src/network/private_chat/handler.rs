@@ -10,6 +10,8 @@ use primitives::{ErrorMessage, Event, PlainTextMessage};
 use std::collections::VecDeque;
 use std::task::{Context, Poll};
 
+/// Protocol handler for private chat. Handles sending and receiving messages
+/// and sending peer metadata after the handshake.
 pub struct PrivateChatHandler {
     local_metadata: HandshakeMetadata,
     framed_socket: Option<Framed<NegotiatedSubstream, LengthCodec>>,
@@ -21,6 +23,8 @@ pub struct PrivateChatHandler {
     errors: VecDeque<ErrorMessage>,
 }
 
+/// Event coming from behavior to notify about
+/// the new incoming message from user to be sent
 #[derive(Debug, Clone)]
 pub enum InEvent {
     SendMessage(PlainTextMessage),
@@ -44,7 +48,7 @@ impl ProtocolsHandler for PrivateChatHandler {
         protocol: (HandshakeMetadata, Framed<NegotiatedSubstream, LengthCodec>),
         _: (),
     ) {
-        log::debug!("Private chat: Injected fully negotiated inbound");
+        log::debug!("Injected fully negotiated inbound");
         self.pending_substream_open = false;
         let (metadata, framed_socket) = protocol;
         log::debug!("Received peer metadata: {:?}", metadata);
@@ -57,10 +61,10 @@ impl ProtocolsHandler for PrivateChatHandler {
         protocol: (HandshakeMetadata, Framed<NegotiatedSubstream, LengthCodec>),
         _: (),
     ) {
-        log::debug!("Private chat: Injected fully negotiated outbound");
+        log::debug!("Injected fully negotiated outbound");
         self.pending_substream_open = false;
         let (metadata, framed_socket) = protocol;
-        log::debug!("Peer Metadata: {:?}", metadata);
+        log::debug!("Received peer metadata: {:?}", metadata);
         self.framed_socket = Some(framed_socket);
         self.pending_metadata = Some(metadata);
     }
@@ -94,10 +98,17 @@ impl ProtocolsHandler for PrivateChatHandler {
         if let Some(e) = self.errors.pop_front() {
             return Poll::Ready(ProtocolsHandlerEvent::Custom(Event::Error(e)));
         }
+        if let Some(metadata) = self.pending_metadata.take() {
+            return Poll::Ready(ProtocolsHandlerEvent::Custom(Event::ReceivedMetadata {
+                peer_id: self.peer_id(),
+                name: metadata.name,
+            }));
+        }
         if !self.pending_sending_messages.is_empty()
             && self.framed_socket.is_none()
             && !self.pending_substream_open
         {
+            log::debug!("Opening substream");
             self.pending_substream_open = true;
             return Poll::Ready(ProtocolsHandlerEvent::OutboundSubstreamRequest {
                 protocol: SubstreamProtocol::new(
@@ -110,6 +121,7 @@ impl ProtocolsHandler for PrivateChatHandler {
             match framed_socket.poll_ready_unpin(cx) {
                 Poll::Ready(_) => {
                     if let Some(message) = self.pending_sending_messages.pop_front() {
+                        log::debug!("Sending message with timestamp: {}", message.timestamp);
                         self.outgoing_message = Some(message.timestamp);
                         let bytes = match serde_json::to_vec(&message) {
                             Ok(b) => b,
@@ -138,6 +150,7 @@ impl ProtocolsHandler for PrivateChatHandler {
             match framed_socket.poll_flush_unpin(cx) {
                 Poll::Ready(_) => {
                     if let Some(timestamp) = self.outgoing_message.take() {
+                        log::debug!("Sent message with timestamp: {}", timestamp);
                         return Poll::Ready(ProtocolsHandlerEvent::Custom(
                             Event::SentPlainTextMessage { timestamp },
                         ));
@@ -150,21 +163,25 @@ impl ProtocolsHandler for PrivateChatHandler {
                 Poll::Ready(Some(Ok(bytes))) => {
                     match serde_json::from_slice::<PlainTextMessage>(&bytes) {
                         Ok(message) => {
+                            log::debug!("Received message: {:?}", message);
                             return Poll::Ready(ProtocolsHandlerEvent::Custom(
                                 Event::ReceivedPlainTextMessage(message),
                             ));
                         }
-                        Err(e) => return Poll::Ready(ProtocolsHandlerEvent::Custom(Event::Error(
-                            ErrorMessage::Other {
-                                reason: format!(
+                        Err(e) => {
+                            return Poll::Ready(ProtocolsHandlerEvent::Custom(Event::Error(
+                                ErrorMessage::Other {
+                                    reason: format!(
                                     "Failed to deserialize incoming message: {:02x?}. Reason: {}",
                                     bytes, e
                                 ),
-                            },
-                        ))),
+                                },
+                            )))
+                        }
                     }
                 }
                 Poll::Ready(Some(Err(e))) => {
+                    log::error!("Error on the receiving stream: {}", e);
                     return Poll::Ready(ProtocolsHandlerEvent::Custom(Event::Error(
                         ErrorMessage::Network {
                             peer_id: self.peer_id(),
@@ -173,7 +190,7 @@ impl ProtocolsHandler for PrivateChatHandler {
                     )));
                 }
                 Poll::Ready(None) => {
-                    log::debug!("Stream is closed");
+                    log::warn!("Stream is closed");
                 }
             }
         }
@@ -182,6 +199,7 @@ impl ProtocolsHandler for PrivateChatHandler {
 }
 
 impl PrivateChatHandler {
+    /// Creates a new handler. `local_metadata` is required for the initial exchange with a peer.
     pub fn new(local_metadata: HandshakeMetadata) -> PrivateChatHandler {
         PrivateChatHandler {
             local_metadata,
