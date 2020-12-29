@@ -22,7 +22,7 @@ use super::{
 pub struct PrivateChatBehaviour {
     local_metadata: HandshakeMetadata,
     pending_events: VecDeque<Event>,
-    pending_messages: VecDeque<PlainTextMessage>,
+    pending_messages: VecDeque<(PeerId, PlainTextMessage)>,
     pending_connections: HashSet<PeerId>,
     connected: HashMap<PeerId, HashSet<Multiaddr>>,
 }
@@ -40,38 +40,11 @@ impl PrivateChatBehaviour {
     }
 
     /// Send message to peer
-    pub fn send_message(&mut self, message: PlainTextMessage) {
-        self.pending_messages.push_back(message);
-    }
-
-    fn try_poll_message(
-        &mut self,
-        _: &mut Context<'_>,
-        _: &mut impl PollParameters,
-    ) -> Result<
-        Poll<NetworkBehaviourAction<<PrivateChatHandler as ProtocolsHandler>::InEvent, Event>>,
-    > {
-        if let Some(message) = self.pending_messages.pop_front() {
-            log::debug!("Sending message: {:?}", message);
-            let peer_bytes = bs58::decode(message.from.clone()).into_vec()?;
-            let peer_id = PeerId::from_bytes(peer_bytes)?;
-            if self.connected.contains_key(&peer_id) {
-                return Ok(Poll::Ready(NetworkBehaviourAction::NotifyHandler {
-                    peer_id: peer_id.clone(),
-                    handler: NotifyHandler::Any,
-                    event: InEvent::SendMessage(message),
-                }));
-            }
-            if !self.pending_connections.contains(&peer_id) {
-                self.pending_connections.insert(peer_id.clone());
-                self.pending_messages.push_back(message);
-                return Ok(Poll::Ready(NetworkBehaviourAction::DialPeer {
-                    peer_id: peer_id.clone(),
-                    condition: DialPeerCondition::Disconnected,
-                }));
-            }
-        }
-        Ok(Poll::Pending)
+    pub fn send_message(&mut self, message: PlainTextMessage) -> Result<()> {
+        let peer_bytes = bs58::decode(message.from.clone()).into_vec()?;
+        let peer_id = PeerId::from_bytes(peer_bytes)?;
+        self.pending_messages.push_back((peer_id, message));
+        Ok(())
     }
 }
 
@@ -139,41 +112,26 @@ impl NetworkBehaviour for PrivateChatBehaviour {
             Self::OutEvent,
         >,
     > {
-        if let Some(message) = self.pending_messages.pop_front() {
-            log::debug!("Sending message: {:?}", message);
-            let peer_bytes = match bs58::decode(message.from.clone()).into_vec() {
-                Ok(bytes) => bytes,
-                Err(e) => {
-                    log::error!("Error parsing peer base58 string `{:}`", message.from);
-                    // TODO - proceed out of if clause
-                    return Poll::Pending;
+        log::debug!("-----Polling private chat");
+        // Handle all pending messages
+        for _ in 0..self.pending_messages.len() {
+            if let Some((peer_id, message)) = self.pending_messages.pop_front() {
+                if self.connected.contains_key(&peer_id) {
+                    log::debug!("-----Notifying handler");
+                    return Poll::Ready(NetworkBehaviourAction::NotifyHandler {
+                        peer_id: peer_id.clone(),
+                        handler: NotifyHandler::Any,
+                        event: InEvent::SendMessage(message.clone()),
+                    });
                 }
-            };
-            let peer_id = match PeerId::from_bytes(peer_bytes) {
-                Ok(peer_id) => peer_id,
-                Err(_) => {
-                    log::error!(
-                        "Error parsing bytes `{:x?}` into peer_id",
-                        message.from.as_bytes(),
-                    );
-                    // TODO - proceed out of if clause
-                    return Poll::Pending;
+                self.pending_messages.push_back((peer_id.clone(), message));
+                if !self.pending_connections.contains(&peer_id) {
+                    self.pending_connections.insert(peer_id.clone());
+                    return Poll::Ready(NetworkBehaviourAction::DialPeer {
+                        peer_id: peer_id.clone(),
+                        condition: DialPeerCondition::Disconnected,
+                    });
                 }
-            };
-            if self.connected.contains_key(&peer_id) {
-                return Poll::Ready(NetworkBehaviourAction::NotifyHandler {
-                    peer_id: peer_id.clone(),
-                    handler: NotifyHandler::Any,
-                    event: InEvent::SendMessage(message),
-                });
-            }
-            if !self.pending_connections.contains(&peer_id) {
-                self.pending_connections.insert(peer_id.clone());
-                self.pending_messages.push_back(message);
-                return Poll::Ready(NetworkBehaviourAction::DialPeer {
-                    peer_id: peer_id.clone(),
-                    condition: DialPeerCondition::Disconnected,
-                });
             }
         }
         if let Some(event) = self.pending_events.pop_front() {

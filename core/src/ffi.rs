@@ -73,7 +73,9 @@ pub extern "C" fn start_network(
         loop {
             match in_events_rx.poll_next_unpin(cx) {
                 Poll::Ready(Some(IncomingEvent::Message(message))) => {
-                    swarm.private_chat.send_message(message);
+                    if let Err(e) = swarm.private_chat.send_message(message) {
+                        log::error!("Error sending message: {}", e);
+                    };
                 }
                 _ => break,
             }

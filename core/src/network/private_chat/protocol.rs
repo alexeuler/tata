@@ -30,6 +30,7 @@ where
     type Future = Pin<Box<dyn Future<Output = Result<Self::Output, Self::Error>> + Send>>;
 
     fn upgrade_inbound(self, mut socket: TSocket, _: Self::Info) -> Self::Future {
+        log::debug!("---- Upgrade inbound");
         Box::pin(async move {
             let packet = upgrade::read_one(&mut socket, 2048).await?;
             let s = String::from_utf8(packet)?;
@@ -51,6 +52,7 @@ where
     type Future = Pin<Box<dyn Future<Output = Result<Self::Output, Self::Error>> + Send>>;
 
     fn upgrade_outbound(self, mut socket: TSocket, _: Self::Info) -> Self::Future {
+        log::debug!("---- Upgrade outbound");
         Box::pin(async move {
             let outbound_message = self.metadata_message();
             upgrade::write_one(&mut socket, &outbound_message).await?;
