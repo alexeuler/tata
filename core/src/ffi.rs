@@ -7,7 +7,7 @@ use std::convert::TryInto;
 use std::sync::Mutex;
 
 use primitives::{
-    ffi::{ByteArray, Event, KeyPair},
+    ffi::{ByteArray, KeyPair},
     LogLevel, PlainTextMessage,
 };
 
@@ -23,7 +23,7 @@ enum IncomingEvent {
 pub extern "C" fn start_network(
     secret_array: ByteArray,
     name: ByteArray,
-    callback: extern "C" fn(Event),
+    callback: extern "C" fn(ByteArray),
     enable_logs: bool,
     log_level: LogLevel,
 ) -> bool {
@@ -65,7 +65,10 @@ pub extern "C" fn start_network(
         loop {
             match out_events.poll_next_unpin(cx) {
                 Poll::Ready(Some(event)) => {
-                    callback(event.into());
+                    match event.try_into() {
+                        Ok(bytes) => callback(bytes),
+                        Err(e) => log::error!("Error serializing out event: {}", e),
+                    };
                 }
                 _ => break,
             }

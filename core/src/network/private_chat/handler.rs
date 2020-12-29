@@ -2,18 +2,13 @@ use super::protocol::{HandshakeMetadata, PrivateChatProtocol};
 use crate::error::Error;
 use futures::prelude::*;
 use futures_codec::{Framed, LengthCodec};
-use futures_timer::Delay;
 use libp2p::swarm::{
     KeepAlive, NegotiatedSubstream, ProtocolsHandler, ProtocolsHandlerEvent,
     ProtocolsHandlerUpgrErr, SubstreamProtocol,
 };
 use primitives::{ErrorMessage, Event, PlainTextMessage};
+use std::collections::VecDeque;
 use std::task::{Context, Poll};
-use std::{collections::VecDeque, time::Duration};
-
-const INITIAL_RETRY: Duration = Duration::from_secs(1);
-const RETRY_EXP: u32 = 2;
-const MAX_RETRY: Duration = Duration::from_secs(120);
 
 pub struct PrivateChatHandler {
     local_metadata: HandshakeMetadata,
@@ -22,9 +17,8 @@ pub struct PrivateChatHandler {
     pending_sending_messages: VecDeque<PlainTextMessage>,
     pending_substream_open: bool,
     outgoing_message: Option<u64>,
+    peer_id: Option<String>,
     errors: VecDeque<ErrorMessage>,
-    retry: Option<Delay>,
-    retry_value: Duration,
 }
 
 #[derive(Debug, Clone)]
@@ -73,21 +67,20 @@ impl ProtocolsHandler for PrivateChatHandler {
 
     fn inject_event(&mut self, event: InEvent) {
         match event {
-            InEvent::SendMessage(message) => self.pending_sending_messages.push_back(message),
+            InEvent::SendMessage(message) => {
+                self.peer_id = Some(message.from.clone());
+                self.pending_sending_messages.push_back(message)
+            }
         }
     }
 
     fn inject_dial_upgrade_error(&mut self, _info: (), error: ProtocolsHandlerUpgrErr<Error>) {
         log::error!("Error upgrading connection: {}", error);
         self.framed_socket = None;
-        self.errors.push_front(ErrorMessage::Unreachable);
-        self.retry = Some(Delay::new(self.retry_value));
-        self.retry_value *= RETRY_EXP;
-        // Stop trying
-        if self.retry_value > MAX_RETRY {
-            self.retry_value = INITIAL_RETRY;
-            self.retry = None;
-        }
+        self.errors.push_back(ErrorMessage::FailedToDial {
+            peer_id: self.peer_id(),
+            reason: error.to_string(),
+        });
     }
 
     fn connection_keep_alive(&self) -> KeepAlive {
@@ -98,12 +91,8 @@ impl ProtocolsHandler for PrivateChatHandler {
         &mut self,
         cx: &mut Context<'_>,
     ) -> Poll<ProtocolsHandlerEvent<PrivateChatProtocol, (), Self::OutEvent, Self::Error>> {
-        log::debug!("Polling handler");
-        if let Some(e) = self.errors.pop_back() {
-            log::error!("Error in errors: {:?}", e);
-            return Poll::Ready(ProtocolsHandlerEvent::Custom(Event::Error(
-                ErrorMessage::Unreachable,
-            )));
+        if let Some(e) = self.errors.pop_front() {
+            return Poll::Ready(ProtocolsHandlerEvent::Custom(Event::Error(e)));
         }
         if !self.pending_sending_messages.is_empty()
             && self.framed_socket.is_none()
@@ -122,12 +111,23 @@ impl ProtocolsHandler for PrivateChatHandler {
                 Poll::Ready(_) => {
                     if let Some(message) = self.pending_sending_messages.pop_front() {
                         self.outgoing_message = Some(message.timestamp);
-                        let bytes = serde_json::to_vec(&message).expect("Infallible; qed");
+                        let bytes = match serde_json::to_vec(&message) {
+                            Ok(b) => b,
+                            Err(e) => {
+                                return Poll::Ready(ProtocolsHandlerEvent::Custom(Event::Error(
+                                    ErrorMessage::MessageValidation {
+                                        timestamp: message.timestamp,
+                                        reason: e.to_string(),
+                                    },
+                                )))
+                            }
+                        };
                         if let Err(e) = framed_socket.start_send_unpin(bytes.into()) {
-                            log::error!("Error sending message: {}", e);
-                            // Todo - add feedback error sending
                             return Poll::Ready(ProtocolsHandlerEvent::Custom(Event::Error(
-                                ErrorMessage::Network,
+                                ErrorMessage::Network {
+                                    peer_id: self.peer_id(),
+                                    reason: e.to_string(),
+                                },
                             )));
                         }
                     }
@@ -138,8 +138,9 @@ impl ProtocolsHandler for PrivateChatHandler {
             match framed_socket.poll_flush_unpin(cx) {
                 Poll::Ready(_) => {
                     if let Some(timestamp) = self.outgoing_message.take() {
-                        // Todo - add sent event
-                        log::debug!("Sent message with timestamp: {:?}", timestamp);
+                        return Poll::Ready(ProtocolsHandlerEvent::Custom(
+                            Event::SentPlainTextMessage { timestamp },
+                        ));
                     }
                 }
                 _ => (),
@@ -149,23 +150,28 @@ impl ProtocolsHandler for PrivateChatHandler {
                 Poll::Ready(Some(Ok(bytes))) => {
                     match serde_json::from_slice::<PlainTextMessage>(&bytes) {
                         Ok(message) => {
-                            log::debug!("Received message: {:?}", message);
                             return Poll::Ready(ProtocolsHandlerEvent::Custom(
                                 Event::ReceivedPlainTextMessage(message),
                             ));
                         }
                         Err(e) => {
-                            log::error!("Error parsing bytes to json: {} : {:?}", e, bytes);
                             return Poll::Ready(ProtocolsHandlerEvent::Custom(Event::Error(
-                                ErrorMessage::Parse,
-                            )));
+                                ErrorMessage::Other {
+                                    reason: format!(
+                                        "Failed to deserialize incoming message: {:02x?}",
+                                        bytes
+                                    ),
+                                },
+                            )))
                         }
                     }
                 }
                 Poll::Ready(Some(Err(e))) => {
-                    log::error!("Network error: {:?}", e);
                     return Poll::Ready(ProtocolsHandlerEvent::Custom(Event::Error(
-                        ErrorMessage::Network,
+                        ErrorMessage::Network {
+                            peer_id: self.peer_id(),
+                            reason: e.to_string(),
+                        },
                     )));
                 }
                 Poll::Ready(None) => {
@@ -185,10 +191,15 @@ impl PrivateChatHandler {
             pending_sending_messages: VecDeque::new(),
             outgoing_message: None,
             pending_substream_open: false,
+            peer_id: None,
             framed_socket: None,
             errors: VecDeque::new(),
-            retry: None,
-            retry_value: INITIAL_RETRY,
         }
+    }
+
+    fn peer_id(&self) -> String {
+        self.peer_id
+            .clone()
+            .unwrap_or("Unknown peer_id".to_string())
     }
 }

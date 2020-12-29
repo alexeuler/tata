@@ -2,16 +2,17 @@
 
 use crate::models::*;
 use primitives::{
-    ffi::{ByteArray, Event, KeyPair},
+    ffi::{ByteArray, KeyPair},
     LogLevel,
 };
-use std::{convert::TryInto, time::SystemTime};
+use std::convert::TryInto;
+use std::time::SystemTime;
 
 extern "C" {
     pub fn start_network(
         secret_array: ByteArray,
         name: ByteArray,
-        callback: extern "C" fn(Event),
+        callback: extern "C" fn(ByteArray),
         enable_logs: bool,
         log_level: LogLevel,
     ) -> bool;
@@ -50,7 +51,7 @@ pub fn create_keypair() -> (Secret, PeerId) {
 }
 
 #[no_mangle]
-extern "C" fn callback(ev: Event) {
+extern "C" fn callback(ev: ByteArray) {
     match ev.try_into() {
         Ok(event) => super::reactor::event_callback(event),
         Err(e) => println!("Error converting event: {}", e),

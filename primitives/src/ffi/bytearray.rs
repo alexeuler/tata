@@ -1,6 +1,9 @@
 use std::{convert::TryInto, mem::ManuallyDrop, string::FromUtf8Error};
 
 /// FFI representation of array of bytes
+///
+/// The memory in the array should be dropped manually (using `free` method).
+/// The Into<_> traits frees the memory automatically
 #[repr(C)]
 pub struct ByteArray {
     data: *mut u8,

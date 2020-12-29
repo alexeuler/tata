@@ -6,7 +6,7 @@ use libp2p::{
     swarm::NetworkBehaviourEventProcess,
     NetworkBehaviour,
 };
-use primitives::{Event, PeerDiscoveryMessage};
+use primitives::Event;
 use std::collections::HashSet;
 
 use crate::error::Result;
@@ -52,12 +52,9 @@ impl NetworkBehaviourEventProcess<MdnsEvent> for CoreNetworkBehaviour {
                     .map(|(peer_id, _)| peer_id)
                     .collect::<HashSet<_>>();
                 for peer_id in peer_ids {
-                    if let Err(e) =
-                        self.event_sink
-                            .try_send(Event::PeerDiscovered(PeerDiscoveryMessage {
-                                peer_id: peer_id.to_base58().into(),
-                            }))
-                    {
+                    if let Err(e) = self.event_sink.try_send(Event::PeerDiscovered {
+                        peer_id: peer_id.to_base58().into(),
+                    }) {
                         log::error!("Error sending message to event sink: {}", e);
                     }
                 }
@@ -68,12 +65,9 @@ impl NetworkBehaviourEventProcess<MdnsEvent> for CoreNetworkBehaviour {
                     .map(|(peer_id, _)| peer_id)
                     .collect::<HashSet<_>>();
                 for peer_id in peer_ids {
-                    if let Err(e) =
-                        self.event_sink
-                            .try_send(Event::PeerGone(PeerDiscoveryMessage {
-                                peer_id: peer_id.to_base58().into(),
-                            }))
-                    {
+                    if let Err(e) = self.event_sink.try_send(Event::PeerGone {
+                        peer_id: peer_id.to_base58().into(),
+                    }) {
                         log::error!("Error sending message to event sink: {}", e);
                     }
                 }
