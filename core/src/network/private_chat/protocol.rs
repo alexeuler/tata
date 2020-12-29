@@ -6,7 +6,14 @@ use libp2p::{core::UpgradeInfo, InboundUpgrade, OutboundUpgrade};
 use serde::{Deserialize, Serialize};
 use std::future::Future;
 use std::pin::Pin;
+/// Metadata exchanged on handshake
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HandshakeMetadata {
+    /// Human name of the peer
+    pub name: String,
+}
 
+/// Protocol struct that knows how to upgrade
 pub struct PrivateChatProtocol {
     local_metadata: HandshakeMetadata,
 }
@@ -32,15 +39,8 @@ where
         log::trace!("Upgrade inbound for private chat");
         Box::pin(async move {
             let mut framed_socket = Framed::new(socket, LengthCodec {});
-            let metadata = if let Some(res) = framed_socket.next().await {
-                let bytes = res?;
-                let s = String::from_utf8(bytes.to_vec())?;
-                serde_json::from_str(&s)?
-            } else {
-                Err("Private chat: upgrade stream is closed")?
-            };
-            let outbound_message = self.metadata_message();
-            framed_socket.send(outbound_message.into()).await?;
+            let metadata = receive_metadata(&mut framed_socket).await?;
+            send_metadata(&mut framed_socket, self.local_metadata).await?;
             Ok((metadata, framed_socket))
         })
     }
@@ -58,17 +58,10 @@ where
     fn upgrade_outbound(self, socket: TSocket, _: Self::Info) -> Self::Future {
         log::trace!("Upgrade outbound for private chat");
         Box::pin(async move {
-            let outbound_message = self.metadata_message();
             let mut framed_socket = Framed::new(socket, LengthCodec {});
-            framed_socket.send(outbound_message.into()).await?;
-            if let Some(res) = framed_socket.next().await {
-                let bytes = res?;
-                let s = String::from_utf8(bytes.to_vec())?;
-                let metadata = serde_json::from_str(&s)?;
-                Ok((metadata, framed_socket))
-            } else {
-                Err("Private chat: upgrade stream is closed".into())
-            }
+            send_metadata(&mut framed_socket, self.local_metadata).await?;
+            let metadata = receive_metadata(&mut framed_socket).await?;
+            Ok((metadata, framed_socket))
         })
     }
 }
@@ -77,13 +70,32 @@ impl PrivateChatProtocol {
     pub fn new(local_metadata: HandshakeMetadata) -> Self {
         Self { local_metadata }
     }
-
-    fn metadata_message(&self) -> Vec<u8> {
-        serde_json::to_vec(&self.local_metadata).expect("Infallible conversion; qed")
-    }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HandshakeMetadata {
-    pub name: String,
+async fn receive_metadata<T>(socket: &mut Framed<T, LengthCodec>) -> Result<HandshakeMetadata>
+where
+    T: AsyncRead + Unpin,
+{
+    let metadata_res = socket
+        .next()
+        .await
+        .ok_or("Private chat: upgrade stream is closed")?;
+    log::trace!("Received metadata");
+    let bytes = metadata_res?;
+    let s = String::from_utf8(bytes.to_vec())?;
+    let metadata = serde_json::from_str(&s)?;
+    Ok(metadata)
+}
+
+async fn send_metadata<T>(
+    socket: &mut Framed<T, LengthCodec>,
+    metadata: HandshakeMetadata,
+) -> Result<()>
+where
+    T: AsyncWrite + Unpin,
+{
+    let message = serde_json::to_vec(&metadata)?;
+    socket.send(message.into()).await?;
+    log::trace!("Sent metadata");
+    Ok(())
 }
