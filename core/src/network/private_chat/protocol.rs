@@ -1,17 +1,11 @@
-use crate::error::Error;
+use crate::error::{Error, Result};
+use futures::prelude::*;
 use futures::{AsyncRead, AsyncWrite};
 use futures_codec::{Framed, LengthCodec};
-use libp2p::{
-    core::{upgrade, UpgradeInfo},
-    InboundUpgrade, OutboundUpgrade,
-};
-use primitives::PlainTextMessage;
+use libp2p::{core::UpgradeInfo, InboundUpgrade, OutboundUpgrade};
 use serde::{Deserialize, Serialize};
 use std::future::Future;
 use std::pin::Pin;
-
-use super::error::Result;
-use futures::prelude::*;
 
 pub struct PrivateChatProtocol {
     local_metadata: HandshakeMetadata,
@@ -32,8 +26,7 @@ where
 {
     type Output = (HandshakeMetadata, Framed<TSocket, LengthCodec>);
     type Error = Error;
-    type Future =
-        Pin<Box<dyn Future<Output = std::result::Result<Self::Output, Self::Error>> + Send>>;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Output>> + Send>>;
 
     fn upgrade_inbound(self, socket: TSocket, _: Self::Info) -> Self::Future {
         log::trace!("Upgrade inbound for private chat");

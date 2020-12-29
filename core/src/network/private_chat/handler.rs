@@ -1,18 +1,13 @@
+use super::protocol::{HandshakeMetadata, PrivateChatProtocol};
+use crate::error::Error;
 use futures::prelude::*;
+use futures_codec::{Framed, LengthCodec};
 use futures_timer::Delay;
 use libp2p::swarm::{
     KeepAlive, NegotiatedSubstream, ProtocolsHandler, ProtocolsHandlerEvent,
     ProtocolsHandlerUpgrErr, SubstreamProtocol,
 };
 use primitives::{ErrorMessage, Event, PlainTextMessage};
-use std::pin::Pin;
-
-use super::{
-    error::Result,
-    protocol::{HandshakeMetadata, PrivateChatProtocol},
-};
-use crate::error::Error;
-use futures_codec::{Framed, LengthCodec};
 use std::task::{Context, Poll};
 use std::{collections::VecDeque, time::Duration};
 
@@ -47,7 +42,6 @@ impl ProtocolsHandler for PrivateChatHandler {
     type InboundOpenInfo = ();
 
     fn listen_protocol(&self) -> SubstreamProtocol<PrivateChatProtocol, ()> {
-        log::debug!("---Listening for proto");
         SubstreamProtocol::new(PrivateChatProtocol::new(self.local_metadata.clone()), ())
     }
 
@@ -59,7 +53,7 @@ impl ProtocolsHandler for PrivateChatHandler {
         log::debug!("Private chat: Injected fully negotiated inbound");
         self.pending_substream_open = false;
         let (metadata, framed_socket) = protocol;
-        log::debug!("Peer Metadata: {:?}", metadata);
+        log::debug!("Received peer metadata: {:?}", metadata);
         self.framed_socket = Some(framed_socket);
         self.pending_metadata = Some(metadata);
     }

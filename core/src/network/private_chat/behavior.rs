@@ -1,6 +1,10 @@
 //! Contains network behavior for establishing connections with newly discovered peers
 
-use super::error::Result;
+use super::{
+    handler::{InEvent, PrivateChatHandler},
+    protocol::HandshakeMetadata,
+};
+use crate::error::Result;
 use libp2p::{
     core::connection::{ConnectedPoint, ConnectionId},
     swarm::DialPeerCondition,
@@ -12,11 +16,6 @@ use libp2p::{
 use primitives::{Event, PlainTextMessage};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::task::{Context, Poll};
-
-use super::{
-    handler::{InEvent, PrivateChatHandler},
-    protocol::HandshakeMetadata,
-};
 
 /// Network behaviour for adding new connections
 pub struct PrivateChatBehaviour {
