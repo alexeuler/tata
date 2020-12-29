@@ -154,16 +154,14 @@ impl ProtocolsHandler for PrivateChatHandler {
                                 Event::ReceivedPlainTextMessage(message),
                             ));
                         }
-                        Err(e) => {
-                            return Poll::Ready(ProtocolsHandlerEvent::Custom(Event::Error(
-                                ErrorMessage::Other {
-                                    reason: format!(
-                                        "Failed to deserialize incoming message: {:02x?}",
-                                        bytes
-                                    ),
-                                },
-                            )))
-                        }
+                        Err(e) => return Poll::Ready(ProtocolsHandlerEvent::Custom(Event::Error(
+                            ErrorMessage::Other {
+                                reason: format!(
+                                    "Failed to deserialize incoming message: {:02x?}. Reason: {}",
+                                    bytes, e
+                                ),
+                            },
+                        ))),
                     }
                 }
                 Poll::Ready(Some(Err(e))) => {
