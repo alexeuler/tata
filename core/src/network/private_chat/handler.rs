@@ -143,8 +143,10 @@ impl ProtocolsHandler for PrivateChatHandler {
             // poll for sent message
             match framed_socket.poll_flush_unpin(cx) {
                 Poll::Ready(_) => {
-                    let timestamp = self.outgoing_message.take();
-                    log::debug!("Sent message with timestamp: {:?}", timestamp);
+                    if let Some(timestamp) = self.outgoing_message.take() {
+                        // Todo - add sent event
+                        log::debug!("Sent message with timestamp: {:?}", timestamp);
+                    }
                 }
                 _ => (),
             }

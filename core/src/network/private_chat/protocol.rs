@@ -39,12 +39,15 @@ where
         log::trace!("Upgrade inbound for private chat");
         Box::pin(async move {
             let mut framed_socket = Framed::new(socket, LengthCodec {});
-            let mut buf = Vec::new();
-            framed_socket.read(&mut buf).await?;
+            let metadata = if let Some(res) = framed_socket.next().await {
+                let bytes = res?;
+                let s = String::from_utf8(bytes.to_vec())?;
+                serde_json::from_str(&s)?
+            } else {
+                Err("Private chat: upgrade stream is closed")?
+            };
             let outbound_message = self.metadata_message();
             framed_socket.send(outbound_message.into()).await?;
-            let s = String::from_utf8(buf)?;
-            let metadata = serde_json::from_str(&s)?;
             Ok((metadata, framed_socket))
         })
     }
@@ -65,11 +68,14 @@ where
             let outbound_message = self.metadata_message();
             let mut framed_socket = Framed::new(socket, LengthCodec {});
             framed_socket.send(outbound_message.into()).await?;
-            let mut buf = Vec::new();
-            framed_socket.read(&mut buf).await?;
-            let s = String::from_utf8(buf)?;
-            let metadata = serde_json::from_str(&s)?;
-            Ok((metadata, framed_socket))
+            if let Some(res) = framed_socket.next().await {
+                let bytes = res?;
+                let s = String::from_utf8(bytes.to_vec())?;
+                let metadata = serde_json::from_str(&s)?;
+                Ok((metadata, framed_socket))
+            } else {
+                Err("Private chat: upgrade stream is closed".into())
+            }
         })
     }
 }
