@@ -14,7 +14,7 @@ use libp2p::{
     Multiaddr, PeerId,
 };
 use primitives::{ErrorMessage, Event, PeerEvent, PlainTextMessage};
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::task::{Context, Poll};
 
 /// Network behaviour for private chat
@@ -22,7 +22,7 @@ pub struct PrivateChatBehaviour {
     local_metadata: HandshakeMetadata,
     pending_events: VecDeque<PeerEvent>,
     pending_messages: VecDeque<(PeerId, PlainTextMessage)>,
-    pending_connections: HashSet<PeerId>,
+    pending_connections: HashMap<PeerId, Vec<(PeerId, PlainTextMessage)>>,
     connected: HashSet<PeerId>,
 }
 
@@ -32,7 +32,7 @@ impl PrivateChatBehaviour {
         Self {
             pending_events: VecDeque::new(),
             pending_messages: VecDeque::new(),
-            pending_connections: HashSet::new(),
+            pending_connections: HashMap::new(),
             connected: HashSet::new(),
             local_metadata,
         }
@@ -60,6 +60,9 @@ impl NetworkBehaviour for PrivateChatBehaviour {
     }
 
     fn inject_connected(&mut self, peer_id: &PeerId) {
+        if let Some(messages) = self.pending_connections.get(peer_id).cloned() {
+            self.pending_messages.extend(messages)
+        }
         self.pending_connections.remove(peer_id);
         self.connected.insert(peer_id.clone());
     }
@@ -70,6 +73,7 @@ impl NetworkBehaviour for PrivateChatBehaviour {
     }
 
     fn inject_dial_failure(&mut self, peer_id: &PeerId) {
+        self.pending_connections.remove(peer_id);
         self.pending_events.push_back(PeerEvent {
             peer_id: peer_id.to_string().to_string(),
             event: Event::Error {
@@ -110,9 +114,12 @@ impl NetworkBehaviour for PrivateChatBehaviour {
                         event: InEvent::SendMessage(message.clone()),
                     });
                 }
-                self.pending_messages.push_back((peer_id.clone(), message));
-                if !self.pending_connections.contains(&peer_id) {
-                    self.pending_connections.insert(peer_id.clone());
+                let is_connecting = self.pending_connections.contains_key(&peer_id);
+                self.pending_connections
+                    .entry(peer_id.clone())
+                    .or_insert(Vec::new())
+                    .push((peer_id.clone(), message));
+                if !is_connecting {
                     return Poll::Ready(NetworkBehaviourAction::DialPeer {
                         peer_id: peer_id.clone(),
                         condition: DialPeerCondition::Disconnected,
