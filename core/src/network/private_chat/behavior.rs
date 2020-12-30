@@ -1,4 +1,4 @@
-//! Contains network behavior for establishing connections with newly discovered peers
+//! Contains network behavior for private chat
 
 use super::{
     handler::{InEvent, PrivateChatHandler},
@@ -14,16 +14,16 @@ use libp2p::{
     Multiaddr, PeerId,
 };
 use primitives::{PeerEvent, PlainTextMessage};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashSet, VecDeque};
 use std::task::{Context, Poll};
 
-/// Network behaviour for adding new connections
+/// Network behaviour for private chat
 pub struct PrivateChatBehaviour {
     local_metadata: HandshakeMetadata,
     pending_events: VecDeque<PeerEvent>,
     pending_messages: VecDeque<(PeerId, PlainTextMessage)>,
     pending_connections: HashSet<PeerId>,
-    connected: HashMap<PeerId, HashSet<Multiaddr>>,
+    connected: HashSet<PeerId>,
 }
 
 impl PrivateChatBehaviour {
@@ -33,7 +33,7 @@ impl PrivateChatBehaviour {
             pending_events: VecDeque::new(),
             pending_messages: VecDeque::new(),
             pending_connections: HashSet::new(),
-            connected: HashMap::new(),
+            connected: HashSet::new(),
             local_metadata,
         }
     }
@@ -55,11 +55,8 @@ impl NetworkBehaviour for PrivateChatBehaviour {
         PrivateChatHandler::new(self.local_metadata.clone())
     }
 
-    fn addresses_of_peer(&mut self, peer_id: &PeerId) -> Vec<Multiaddr> {
-        self.connected
-            .get(peer_id)
-            .map(|set| set.iter().cloned().collect())
-            .unwrap_or(Vec::new())
+    fn addresses_of_peer(&mut self, _: &PeerId) -> Vec<Multiaddr> {
+        Vec::new()
     }
 
     fn inject_connected(&mut self, _: &PeerId) {}
@@ -68,29 +65,18 @@ impl NetworkBehaviour for PrivateChatBehaviour {
         &mut self,
         peer_id: &PeerId,
         _: &ConnectionId,
-        connected_point: &ConnectedPoint,
+        _: &ConnectedPoint,
     ) {
         self.pending_connections.remove(peer_id);
-        let addresses = self
-            .connected
-            .entry(peer_id.clone())
-            .or_insert(HashSet::new());
-        addresses.insert(connected_point.get_remote_address().clone());
+        self.connected.insert(peer_id.clone());
     }
 
-    fn inject_disconnected(&mut self, _: &PeerId) {}
-
-    fn inject_connection_closed(
-        &mut self,
-        peer_id: &PeerId,
-        _: &ConnectionId,
-        connected_point: &ConnectedPoint,
-    ) {
+    fn inject_disconnected(&mut self, peer_id: &PeerId) {
         self.pending_connections.remove(peer_id);
-        self.connected.entry(peer_id.clone()).and_modify(|set| {
-            set.remove(connected_point.get_remote_address());
-        });
+        self.connected.remove(peer_id);
     }
+
+    fn inject_connection_closed(&mut self, _: &PeerId, _: &ConnectionId, _: &ConnectedPoint) {}
 
     fn inject_event(
         &mut self,
@@ -115,7 +101,7 @@ impl NetworkBehaviour for PrivateChatBehaviour {
         // Handle all pending messages
         for _ in 0..self.pending_messages.len() {
             if let Some((peer_id, message)) = self.pending_messages.pop_front() {
-                if self.connected.contains_key(&peer_id) {
+                if self.connected.contains(&peer_id) {
                     return Poll::Ready(NetworkBehaviourAction::NotifyHandler {
                         peer_id: peer_id.clone(),
                         handler: NotifyHandler::Any,
