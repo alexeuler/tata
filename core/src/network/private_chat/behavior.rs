@@ -6,14 +6,14 @@ use super::{
 };
 use crate::error::Result;
 use libp2p::{
-    core::connection::{ConnectedPoint, ConnectionId},
+    core::connection::ConnectionId,
     swarm::DialPeerCondition,
     swarm::{
         NetworkBehaviour, NetworkBehaviourAction, NotifyHandler, PollParameters, ProtocolsHandler,
     },
     Multiaddr, PeerId,
 };
-use primitives::{PeerEvent, PlainTextMessage};
+use primitives::{ErrorMessage, Event, PeerEvent, PlainTextMessage};
 use std::collections::{HashSet, VecDeque};
 use std::task::{Context, Poll};
 
@@ -59,14 +59,7 @@ impl NetworkBehaviour for PrivateChatBehaviour {
         Vec::new()
     }
 
-    fn inject_connected(&mut self, _: &PeerId) {}
-
-    fn inject_connection_established(
-        &mut self,
-        peer_id: &PeerId,
-        _: &ConnectionId,
-        _: &ConnectedPoint,
-    ) {
+    fn inject_connected(&mut self, peer_id: &PeerId) {
         self.pending_connections.remove(peer_id);
         self.connected.insert(peer_id.clone());
     }
@@ -76,7 +69,16 @@ impl NetworkBehaviour for PrivateChatBehaviour {
         self.connected.remove(peer_id);
     }
 
-    fn inject_connection_closed(&mut self, _: &PeerId, _: &ConnectionId, _: &ConnectedPoint) {}
+    fn inject_dial_failure(&mut self, peer_id: &PeerId) {
+        self.pending_events.push_back(PeerEvent {
+            peer_id: peer_id.to_string().to_string(),
+            event: Event::Error {
+                error: ErrorMessage::FailedToDial {
+                    cause: "Unknown".to_string(),
+                },
+            },
+        })
+    }
 
     fn inject_event(
         &mut self,
