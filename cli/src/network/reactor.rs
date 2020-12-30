@@ -2,7 +2,7 @@
 //! and waking subscribed futures
 
 use once_cell::sync::Lazy;
-use primitives::{Event, RingVec};
+use primitives::{PeerEvent, RingVec};
 use std::sync::Mutex;
 use std::task::Waker;
 
@@ -12,7 +12,7 @@ static REACTOR: Lazy<Mutex<Reactor>> = Lazy::new(|| Mutex::new(Reactor::new()));
 /// Reactor holds all incoming events and wakes subscribed futures if necessary
 pub struct Reactor {
     total: usize,
-    events: RingVec<Event>,
+    events: RingVec<PeerEvent>,
     wakers: Vec<Waker>,
 }
 
@@ -28,7 +28,7 @@ impl Reactor {
     }
 
     /// Get the event with this number.
-    pub fn get_event(&self, idx: usize) -> Option<&Event> {
+    pub fn get_event(&self, idx: usize) -> Option<&PeerEvent> {
         self.events.get(idx)
     }
 
@@ -39,7 +39,7 @@ impl Reactor {
             total: 0,
         }
     }
-    fn push_event(&mut self, event: Event) {
+    fn push_event(&mut self, event: PeerEvent) {
         self.events.push(event);
         self.total += 1;
     }
@@ -53,7 +53,7 @@ pub fn use_reactor(f: impl FnOnce(&mut Reactor)) {
     }
 }
 
-pub fn event_callback(event: Event) {
+pub fn event_callback(event: PeerEvent) {
     let mut wakers = vec![];
     use_reactor(|reactor| {
         reactor.push_event(event);

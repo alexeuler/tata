@@ -109,11 +109,11 @@ pub extern "C" fn free_array(array: ByteArray) {
 
 /// Send a message to peer
 #[no_mangle]
-pub extern "C" fn send_message(peer_id: ByteArray, message: ByteArray, timestamp: u64) -> bool {
+pub extern "C" fn send_message(to_peer_id: ByteArray, message: ByteArray, timestamp: u64) -> bool {
     if let Some(sender_mutex) = EVENTS_SENDER.get() {
         if let Ok(mut sender) = sender_mutex.lock() {
-            let from = match peer_id.try_into() {
-                Ok(from) => from,
+            let to = match to_peer_id.try_into() {
+                Ok(to) => to,
                 Err(e) => {
                     log::error!("Error converting `peer_id` bytearray: {}", e);
                     return false;
@@ -127,7 +127,7 @@ pub extern "C" fn send_message(peer_id: ByteArray, message: ByteArray, timestamp
                 }
             };
             let message = PlainTextMessage {
-                from,
+                to,
                 timestamp,
                 text,
             };

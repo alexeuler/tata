@@ -13,14 +13,14 @@ use libp2p::{
     },
     Multiaddr, PeerId,
 };
-use primitives::{Event, PlainTextMessage};
+use primitives::{PeerEvent, PlainTextMessage};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::task::{Context, Poll};
 
 /// Network behaviour for adding new connections
 pub struct PrivateChatBehaviour {
     local_metadata: HandshakeMetadata,
-    pending_events: VecDeque<Event>,
+    pending_events: VecDeque<PeerEvent>,
     pending_messages: VecDeque<(PeerId, PlainTextMessage)>,
     pending_connections: HashSet<PeerId>,
     connected: HashMap<PeerId, HashSet<Multiaddr>>,
@@ -40,7 +40,7 @@ impl PrivateChatBehaviour {
 
     /// Send message to peer
     pub fn send_message(&mut self, message: PlainTextMessage) -> Result<()> {
-        let peer_bytes = bs58::decode(message.from.clone()).into_vec()?;
+        let peer_bytes = bs58::decode(message.to.clone()).into_vec()?;
         let peer_id = PeerId::from_bytes(peer_bytes)?;
         self.pending_messages.push_back((peer_id, message));
         Ok(())
@@ -49,7 +49,7 @@ impl PrivateChatBehaviour {
 
 impl NetworkBehaviour for PrivateChatBehaviour {
     type ProtocolsHandler = PrivateChatHandler;
-    type OutEvent = Event;
+    type OutEvent = PeerEvent;
 
     fn new_handler(&mut self) -> Self::ProtocolsHandler {
         PrivateChatHandler::new(self.local_metadata.clone())
@@ -94,11 +94,12 @@ impl NetworkBehaviour for PrivateChatBehaviour {
 
     fn inject_event(
         &mut self,
-        _: PeerId,
+        peer_id: PeerId,
         _: ConnectionId,
         event: <Self::ProtocolsHandler as ProtocolsHandler>::OutEvent,
     ) {
-        self.pending_events.push_back(event);
+        let peer_id = peer_id.to_base58().to_string();
+        self.pending_events.push_back(PeerEvent { peer_id, event });
     }
 
     fn poll(

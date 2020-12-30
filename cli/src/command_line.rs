@@ -27,9 +27,9 @@ enum Opt {
 pub async fn start_command_line() {
     loop {
         let mut command = String::new();
-        std::io::stdin()
+        io::stdin()
             .read_line(&mut command)
-            // .await
+            .await
             .expect("Failed to read line");
         let tokens = vec!["."].into_iter().chain(command.split_whitespace());
         let command = match Opt::from_iter_safe(tokens) {

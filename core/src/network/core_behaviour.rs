@@ -6,7 +6,7 @@ use libp2p::{
     swarm::NetworkBehaviourEventProcess,
     NetworkBehaviour,
 };
-use primitives::Event;
+use primitives::{Event, PeerEvent};
 use std::collections::HashSet;
 
 use crate::error::Result;
@@ -15,16 +15,16 @@ use super::private_chat::{HandshakeMetadata, PrivateChatBehaviour};
 
 /// Implementation of networking behaviour for core
 #[derive(NetworkBehaviour)]
-#[behaviour(out_event = "Event")]
+#[behaviour(out_event = "PeerEvent")]
 pub struct CoreNetworkBehaviour {
     pub mdns: Mdns,
     pub private_chat: PrivateChatBehaviour,
     #[behaviour(ignore)]
-    pub event_sink: Sender<Event>,
+    pub event_sink: Sender<PeerEvent>,
 }
 
 impl CoreNetworkBehaviour {
-    pub fn new(local_metadata: HandshakeMetadata, event_sink: Sender<Event>) -> Result<Self> {
+    pub fn new(local_metadata: HandshakeMetadata, event_sink: Sender<PeerEvent>) -> Result<Self> {
         let mdns = Mdns::new()?;
         let private_chat = PrivateChatBehaviour::new(local_metadata);
         Ok(CoreNetworkBehaviour {
@@ -35,8 +35,8 @@ impl CoreNetworkBehaviour {
     }
 }
 
-impl NetworkBehaviourEventProcess<Event> for CoreNetworkBehaviour {
-    fn inject_event(&mut self, event: Event) {
+impl NetworkBehaviourEventProcess<PeerEvent> for CoreNetworkBehaviour {
+    fn inject_event(&mut self, event: PeerEvent) {
         if let Err(e) = self.event_sink.start_send(event) {
             log::error!("Error sending message to event sink: {}", e);
         }
@@ -52,9 +52,12 @@ impl NetworkBehaviourEventProcess<MdnsEvent> for CoreNetworkBehaviour {
                     .map(|(peer_id, _)| peer_id)
                     .collect::<HashSet<_>>();
                 for peer_id in peer_ids {
-                    if let Err(e) = self.event_sink.try_send(Event::PeerDiscovered {
-                        peer_id: peer_id.to_base58().into(),
-                    }) {
+                    let peer_id = peer_id.to_base58().into();
+                    let event = PeerEvent {
+                        peer_id,
+                        event: Event::PeerDiscovered,
+                    };
+                    if let Err(e) = self.event_sink.try_send(event) {
                         log::error!("Error sending message to event sink: {}", e);
                     }
                 }
@@ -65,9 +68,12 @@ impl NetworkBehaviourEventProcess<MdnsEvent> for CoreNetworkBehaviour {
                     .map(|(peer_id, _)| peer_id)
                     .collect::<HashSet<_>>();
                 for peer_id in peer_ids {
-                    if let Err(e) = self.event_sink.try_send(Event::PeerGone {
-                        peer_id: peer_id.to_base58().into(),
-                    }) {
+                    let peer_id = peer_id.to_base58().into();
+                    let event = PeerEvent {
+                        peer_id,
+                        event: Event::PeerDiscovered,
+                    };
+                    if let Err(e) = self.event_sink.try_send(event) {
                         log::error!("Error sending message to event sink: {}", e);
                     }
                 }

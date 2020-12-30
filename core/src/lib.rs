@@ -11,7 +11,7 @@ use futures::channel::mpsc::Receiver;
 use libp2p::identity::secp256k1::{Keypair, SecretKey};
 use libp2p::{PeerId, Swarm};
 use network::{CoreNetworkBehaviour, HandshakeMetadata};
-use primitives::{Event, Metadata};
+use primitives::{Metadata, PeerEvent};
 
 const CHANNEL_BUFFER_SIZE: usize = 10;
 
@@ -70,7 +70,7 @@ const CHANNEL_BUFFER_SIZE: usize = 10;
 pub fn create_swarm(
     secret: SecretKey,
     name: String,
-) -> Result<(Swarm<CoreNetworkBehaviour>, Receiver<Event>)> {
+) -> Result<(Swarm<CoreNetworkBehaviour>, Receiver<PeerEvent>)> {
     let metadata = Metadata { name };
     let keypair: Keypair = secret.into();
     let libp2p_keypair = libp2p::identity::Keypair::Secp256k1(keypair);

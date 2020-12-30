@@ -3,13 +3,13 @@ use futures::{
     stream::Stream,
     task::{Context, Poll},
 };
-use primitives::Event;
+use primitives::PeerEvent;
 use std::collections::VecDeque;
 use std::pin::Pin;
 
 pub struct NetworkEventStream {
     reactor_cursor: Option<usize>,
-    buffer: VecDeque<Event>,
+    buffer: VecDeque<PeerEvent>,
 }
 
 impl NetworkEventStream {
@@ -22,7 +22,7 @@ impl NetworkEventStream {
 }
 
 impl Stream for NetworkEventStream {
-    type Item = Event;
+    type Item = PeerEvent;
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
         let self_mut = unsafe { self.get_unchecked_mut() };
         if self_mut.reactor_cursor.is_none() {
