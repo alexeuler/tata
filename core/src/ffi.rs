@@ -18,7 +18,20 @@ enum IncomingEvent {
     Message(PlainTextMessage),
 }
 
-/// Start network, see [start_network](../fn.start.html)
+/// Starts the networking process in the background.
+/// ## Arguments
+///
+///
+/// `secret_array` - a Sec256k1 private key bytes
+///
+/// `name` - your name as seen to other peers
+///
+/// `callback` - triggered on any event with bytes representing
+/// serialized json event (`primitives::PeerEvent`).
+///
+/// `enable_logs` - enables or disables logs
+///
+/// `log_level` - the level of the log
 #[no_mangle]
 pub extern "C" fn start_network(
     secret_array: ByteArray,
@@ -107,7 +120,15 @@ pub extern "C" fn free_array(array: ByteArray) {
     }
 }
 
-/// Send a message to peer
+/// Send a message to peer.
+///
+/// ## Arguments
+///
+/// `to_peer_id` - base58 Libp2p peer_id. This one is taken from discovery events from `start_network`.
+///
+/// `message` - utf8 text content of the message
+///
+/// `timestamp` - unix timestamp, essentially an id of the message
 #[no_mangle]
 pub extern "C" fn send_message(to_peer_id: ByteArray, message: ByteArray, timestamp: u64) -> bool {
     if let Some(sender_mutex) = EVENTS_SENDER.get() {

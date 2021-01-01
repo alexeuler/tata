@@ -1,6 +1,9 @@
-//! Provides underlying mechanics for p2p communcations. There are
-//! 2 types of exports in this module. One is is the root for using in Rust.
-//! The other is in the [ffi](./ffi/index.html) module for using in as a `C` library;
+//! Provides underlying mechanics for p2p communcations.
+//!
+//! Use [create_swarm](./fn.create_swarm.html) function to create if you use
+//! this lib from from Rust apps. It creates a Swarm tham implements Stream and can be polled.
+//!
+//! Use functions in the [ffi](./ffi/index.html) if you use this lib as a `C` lib.
 mod error;
 pub mod ffi;
 mod network;
