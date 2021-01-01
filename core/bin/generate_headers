@@ -1,1 +1,1 @@
-cbindgen --crate tata-core --lang c --output headers/tata_core.h
+cbindgen --crate tata-core --output headers/tata_core.h
