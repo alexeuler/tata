@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:tata_mobile/screens/onboarding/primary_key.dart';
+import 'package:tata_mobile/screens/onboarding/welcome.dart';
 
 class Onboarding extends StatefulWidget {
   Onboarding({Key key}) : super(key: key);
@@ -24,21 +26,8 @@ class _OnboardingState extends State<Onboarding> {
   @override
   Widget build(BuildContext context) {
     return PageView(controller: _pageController, children: [
-      _welcomePage,
-      _pickName,
+      Welcome(),
+      PrimaryKey(),
     ]);
   }
 }
-
-final _welcomePage = Container(
-    color: Colors.pink,
-    child: Column(
-      children: [Text("Welcome")],
-    ));
-
-final _pickName = Container(
-  color: Colors.blue,
-  child: Column(
-    children: [Text("Pick Username")],
-  ),
-);

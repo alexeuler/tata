@@ -1,20 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:tata_mobile/onboarding.dart';
+import 'package:tata_mobile/screens/onboarding.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(TataApp());
 }
 
-class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
+class TataApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Tata',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
+      theme: ThemeData.light(),
       home: Onboarding(),
     );
   }
