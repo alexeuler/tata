@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:tata_mobile/screens/onboarding/primary_key.dart';
 import 'package:tata_mobile/screens/onboarding/welcome.dart';
+
+final Widget svg =
+    SvgPicture.asset("assets/svg/phone_p2p.svg", semanticsLabel: 'Acme Logo');
 
 class Onboarding extends StatefulWidget {
   Onboarding({Key key}) : super(key: key);
@@ -25,9 +29,6 @@ class _OnboardingState extends State<Onboarding> {
 
   @override
   Widget build(BuildContext context) {
-    return PageView(controller: _pageController, children: [
-      Welcome(),
-      PrimaryKey(),
-    ]);
+    return PageView(controller: _pageController, children: [svg]);
   }
 }

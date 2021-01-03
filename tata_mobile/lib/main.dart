@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:tata_mobile/screens/onboarding.dart';
+import 'package:tata_mobile/screens/onboarding/onboarding.dart';
 
 void main() {
   runApp(TataApp());
