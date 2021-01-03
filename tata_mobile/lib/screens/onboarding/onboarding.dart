@@ -29,6 +29,6 @@ class _OnboardingState extends State<Onboarding> {
 
   @override
   Widget build(BuildContext context) {
-    return PageView(controller: _pageController, children: [svg]);
+    return PageView(controller: _pageController, children: [Welcome()]);
   }
 }

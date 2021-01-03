@@ -38,28 +38,28 @@
                     <path d="M106.1069,84.0609106 C104.803423,86.9003494 108.849929,89.0881124 113.915764,88.4988025 C118.981599,87.9094925 122.736436,83.1833357 121.499381,81.0714287 C120.262326,78.9595217 107.410377,81.2214717 106.1069,84.0609106 Z" id="Path-10" fill="#7C8495" transform="translate(113.798536, 84.418881) rotate(19.000000) translate(-113.798536, -84.418881) "></path>
                 </g>
                 <g id="Additional-Elements" transform="translate(72.000000, 0.000000)">
-                    <circle id="Oval-18" fill="#8ADAF8" opacity="0.508570429" cx="221" cy="84" r="3"></circle>
-                    <circle id="Oval-18" fill="#8ADAF8" opacity="0.615263526" cx="281" cy="128" r="3"></circle>
-                    <circle id="Oval-11" fill="#48D2A0" opacity="0.451142724" cx="40" cy="83" r="7"></circle>
-                    <circle id="Oval-11" fill="#48D2A0" opacity="0.493703358" cx="61.5" cy="46.5" r="4.5"></circle>
-                    <g id="Group-23" opacity="0.424032183" transform="translate(136.093267, 13.910254) rotate(-153.000000) translate(-136.093267, -13.910254) translate(126.093267, 3.410254)" stroke="#48D2A0" stroke-linecap="round" stroke-width="7">
+                    <circle id="Oval-18" fill="#15B4F1" opacity="0.508570429" cx="221" cy="84" r="3"></circle>
+                    <circle id="Oval-18" fill="#15B4F1" opacity="0.615263526" cx="281" cy="128" r="3"></circle>
+                    <circle id="Oval-11" fill="#15B4F1" opacity="0.451142724" cx="40" cy="83" r="7"></circle>
+                    <circle id="Oval-11" fill="#15B4F1" opacity="0.493703358" cx="61.5" cy="46.5" r="4.5"></circle>
+                    <g id="Group-23" opacity="0.424032183" transform="translate(136.093267, 13.910254) rotate(-153.000000) translate(-136.093267, -13.910254) translate(126.093267, 3.410254)" stroke="#15B4F1" stroke-linecap="round" stroke-width="7">
                         <line x1="2.52420307e-12" y1="10.3253866" x2="19.7389208" y2="10.3253866" id="Line"></line>
                         <g id="Group-22" transform="translate(9.760346, 10.456494) rotate(-270.000000) translate(-9.760346, -10.456494) translate(-0.239654, 7.456494)">
                             <line x1="-1.79412041e-13" y1="2.89110824" x2="19.7389208" y2="2.89110824" id="Line"></line>
                         </g>
                     </g>
-                    <g id="Group-23" opacity="0.409048507" transform="translate(520.026279, 312.026279) rotate(-285.000000) translate(-520.026279, -312.026279) translate(509.026279, 301.026279)" stroke="#48D2A0" stroke-linecap="round" stroke-width="6">
+                    <g id="Group-23" opacity="0.409048507" transform="translate(520.026279, 312.026279) rotate(-285.000000) translate(-520.026279, -312.026279) translate(509.026279, 301.026279)" stroke="#15B4F1" stroke-linecap="round" stroke-width="6">
                         <line x1="1.8189894e-12" y1="10.9700958" x2="21.9401915" y2="10.9700958" id="Line"></line>
                         <g id="Group-22" transform="translate(10.712620, 11.000000) rotate(-270.000000) translate(-10.712620, -11.000000) translate(-0.287380, 8.000000)">
                             <line x1="1.15285559e-12" y1="2.74252394" x2="21.9401915" y2="2.74252394" id="Line"></line>
                         </g>
                     </g>
-                    <circle id="Oval-11" fill="#48D2A0" opacity="0.253206623" cx="41.5" cy="437.5" r="7.5"></circle>
-                    <path d="M4.5,410 C6.98528137,410 9,407.985281 9,405.5 C9,403.014719 6.98528137,401 4.5,401 C2.01471863,401 0,403.014719 0,405.5 C0,407.985281 2.01471863,410 4.5,410 Z" id="Oval-11" fill="#48D2A0" opacity="0.212278451"></path>
-                    <circle id="Oval-11" fill="#48D2A0" opacity="0.149778451" cx="391.5" cy="45.5" r="7.5"></circle>
-                    <circle id="Oval-11" fill="#48D2A0" opacity="0.304046175" cx="421.5" cy="76.5" r="4.5"></circle>
-                    <circle id="Oval-11" fill="#48D2A0" opacity="0.157532649" cx="542" cy="258" r="7"></circle>
-                    <g id="Group-23" opacity="0.452250466" transform="translate(490.314996, 58.668549) rotate(-40.000000) translate(-490.314996, -58.668549) translate(482.814996, 50.668549)" stroke="#48D2A0" stroke-linecap="round" stroke-width="6">
+                    <circle id="Oval-11" fill="#15B4F1" opacity="0.253206623" cx="41.5" cy="437.5" r="7.5"></circle>
+                    <path d="M4.5,410 C6.98528137,410 9,407.985281 9,405.5 C9,403.014719 6.98528137,401 4.5,401 C2.01471863,401 0,403.014719 0,405.5 C0,407.985281 2.01471863,410 4.5,410 Z" id="Oval-11" fill="#15B4F1" opacity="0.212278451"></path>
+                    <circle id="Oval-11" fill="#15B4F1" opacity="0.149778451" cx="391.5" cy="45.5" r="7.5"></circle>
+                    <circle id="Oval-11" fill="#15B4F1" opacity="0.304046175" cx="421.5" cy="76.5" r="4.5"></circle>
+                    <circle id="Oval-11" fill="#15B4F1" opacity="0.157532649" cx="542" cy="258" r="7"></circle>
+                    <g id="Group-23" opacity="0.452250466" transform="translate(490.314996, 58.668549) rotate(-40.000000) translate(-490.314996, -58.668549) translate(482.814996, 50.668549)" stroke="#15B4F1" stroke-linecap="round" stroke-width="6">
                         <line x1="1.8189894e-12" y1="7.37881805" x2="14.4038414" y2="7.37881805" id="Line"></line>
                         <g id="Group-22" transform="translate(7.056035, 7.684219) rotate(-270.000000) translate(-7.056035, -7.684219) translate(-0.443965, 5.684219)">
                             <line x1="2.10498285e-13" y1="1.84470451" x2="14.4038414" y2="1.84470451" id="Line"></line>
