@@ -3,17 +3,24 @@ import 'package:flutter_svg/svg.dart';
 import 'package:tata_mobile/utils.dart';
 import 'dart:math';
 
+import 'package:theme_manager/theme_manager.dart';
+
 class Welcome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final svgPath = ThemeManager.of(context).brightness == Brightness.dark
+        ? "assets/svg/dark/phone_p2p.svg"
+        : "assets/svg/phone_p2p.svg";
     return Container(
         color: Theme.of(context).backgroundColor,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            SvgPicture.asset("assets/svg/phone_p2p.svg",
-                semanticsLabel: 'Picture'),
+            Container(
+              margin: EdgeInsets.fromLTRB(0, 0, 0, 20),
+              child: SvgPicture.asset(svgPath),
+            ),
             Text(
               "Welcome to Kittie chat",
               textAlign: TextAlign.center,
