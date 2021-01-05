@@ -1,46 +1,53 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
+import 'package:tata_mobile/screens/onboarding/screen_wave.dart';
 import 'package:tata_mobile/utils.dart';
-import 'dart:math';
 
-import 'package:theme_manager/theme_manager.dart';
+class Welcome extends StatefulWidget {
+  @override
+  State<StatefulWidget> createState() => WelcomeState();
+}
 
-class Welcome extends StatelessWidget {
+class WelcomeState extends State<Welcome> with SingleTickerProviderStateMixin {
+  AnimationController _baseAnimation;
+  Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _baseAnimation =
+        AnimationController(vsync: this, duration: Duration(milliseconds: 500));
+    _baseAnimation.forward();
+    _animation = CurvedAnimation(
+      parent: _baseAnimation,
+      curve: Curves.easeOut,
+      reverseCurve: Curves.easeIn,
+    );
+  }
+
+  @override
+  void dispose() {
+    _baseAnimation.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final svgPath = ThemeManager.of(context).brightness == Brightness.dark
-        ? "assets/svg/dark/phone_p2p.svg"
-        : "assets/svg/phone_p2p.svg";
-    return Container(
-        color: Theme.of(context).backgroundColor,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(
-              margin: EdgeInsets.fromLTRB(0, 0, 0, 20),
-              child: SvgPicture.asset(svgPath),
-            ),
-            Text(
-              "Welcome to Kittie chat",
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.headline4,
-            ),
-            Text(
-              "This is a secure p2p chat",
-              style: Theme.of(context).textTheme.bodyText1,
-            ),
-            RaisedButton(
-              onPressed: () => {},
-              color: Theme.of(context).primaryColor,
-              textColor: Colors.white,
-              textTheme: ButtonTextTheme.primary,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18.0),
-                  side: BorderSide(color: Theme.of(context).primaryColor)),
-              child: Text("Next"),
-            )
-          ],
-        ));
+    final width = displayWidth(context).toDouble();
+    final height = displayHeight(context).toDouble();
+    return Stack(
+      children: [
+        AnimatedBuilder(
+            animation: _animation,
+            builder: (context, child) {
+              final double progress = _animation.value;
+              final waveHeight = 40.0 * progress;
+              return ScreenWave(
+                  width: width,
+                  height: height / 4,
+                  waveHeight: waveHeight,
+                  color: Theme.of(context).primaryColor);
+            })
+      ],
+    );
   }
 }

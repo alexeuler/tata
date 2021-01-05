@@ -26,7 +26,7 @@ class TataApp extends StatelessWidget {
       themedWidgetBuilder: (BuildContext context, ThemeData theme) {
         return MaterialApp(
           title: 'Tata',
-          theme: darkTheme,
+          theme: theme,
           home: Onboarding(),
         );
       },
